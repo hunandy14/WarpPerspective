@@ -55,57 +55,6 @@ protected:
 	size_t row;
 };
 
-struct Color {
-	unsigned char R;
-	unsigned char G;
-	unsigned char B;
-};
-static Color bilinear(const Raw &src, float _x, float _y)
-{
-	Color color;
-	int x, y;
-	x = (int)_x;
-	y = (int)_y;
-
-	float l_x = 0.f, r_x = 0.f;
-	float t_y = 0.f, b_y = 0.f;
-
-	l_x = _x - (float)x;
-	r_x = 1.f - l_x;
-
-	t_y = _y - (float)y;
-	b_y = 1.f - t_y;
-
-	float R = 0.f, G = 0.f, B = 0.f;
-	int x1 = (x + 1) > (src.getCol() - 1) ? (x + 1) : (src.getCol() - 1);
-	int y1 = (y + 1) > (src.getRow() - 1) ? (y + 1) : (src.getRow() - 1);
-
-	if (x >= 0 && x < src.getCol() - 1 && y >= 0 && y < src.getRow() - 1)
-	{
-		R = (float)src.RGB[((y)* src.getCol() + (x)) * 3 + 0] * (r_x * b_y);
-		G = (float)src.RGB[((y)* src.getCol() + (x)) * 3 + 1] * (r_x * b_y);
-		B = (float)src.RGB[((y)* src.getCol() + (x)) * 3 + 2] * (r_x * b_y);
-
-		R += (float)src.RGB[((y)* src.getCol() + (x + 1)) * 3 + 0] * (l_x * b_y);
-		G += (float)src.RGB[((y)* src.getCol() + (x + 1)) * 3 + 1] * (l_x * b_y);
-		B += (float)src.RGB[((y)* src.getCol() + (x + 1)) * 3 + 2] * (l_x * b_y);
-
-		R += (float)src.RGB[((y + 1) * src.getCol() + (x)) * 3 + 0] * (r_x * t_y);
-		G += (float)src.RGB[((y + 1) * src.getCol() + (x)) * 3 + 1] * (r_x * t_y);
-		B += (float)src.RGB[((y + 1) * src.getCol() + (x)) * 3 + 2] * (r_x * t_y);
-
-		R += (float)src.RGB[((y + 1) * src.getCol() + (x + 1)) * 3 + 0] * (l_x * t_y);
-		G += (float)src.RGB[((y + 1) * src.getCol() + (x + 1)) * 3 + 1] * (l_x * t_y);
-		B += (float)src.RGB[((y + 1) * src.getCol() + (x + 1)) * 3 + 2] * (l_x * t_y);
-	}
-
-	color.R = (unsigned char)(R > 255.0 ? 255 : R < 0.0 ? 0 : R);
-	color.G = (unsigned char)(G > 255.0 ? 255 : G < 0.0 ? 0 : G);
-	color.B = (unsigned char)(B > 255.0 ? 255 : B < 0.0 ? 0 : B);
-
-	return color;
-}
-
 // 輸入 dst 座標, 反轉 scr 輸出.
 void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& x, double& y) {
 	const double* H = HomogMat.data();
@@ -122,36 +71,29 @@ void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& x, doub
 	x /= z;
 	y /= z;
 }
-void _WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
+
+void WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
 {
 	dst.resize(src.getCol(), src.getRow());
 	//-------------------------------------
-	Color color;
 	int d_Row = dst.getRow();
 	int d_Col = dst.getCol();
 	int s_Row = src.getRow();
 	int s_Col = src.getCol();
-	unsigned char *dst_RGB;
 	//-------------------------------------
 	int j, i;
 	double x, y;
-
-//#pragma omp parallel for private(i, j, x, y)
-	for (j = 0; j < d_Row; ++j)
-	{
-		dst_RGB = &dst.RGB[j * d_Col * 3];
-		for (i = 0; i < d_Col; ++i)
-		{
+#pragma omp parallel for private(i, j, x, y)
+	for (j = 0; j < d_Row; ++j) {
+		for (i = 0; i < d_Col; ++i){
 			x = i, y = j;
 			WarpPerspective_CoorTranfer(H, x, y);
-
-			int x2=x, y2=y;
 			if ((x <= (double)s_Col-1.0 and x >= 0.0) and
 				(y <= (double)s_Row-1.0 and y >= 0.0))
 			{
-				dst_RGB[i*3 + 0] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 0);
-				dst_RGB[i*3 + 1] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 1);
-				dst_RGB[i*3 + 2] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 2);
+				dst.RGB[(j*d_Col + i)*3 + 0] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 0);
+				dst.RGB[(j*d_Col + i)*3 + 1] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 1);
+				dst.RGB[(j*d_Col + i)*3 + 2] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 2);
 
 			}
 		}
@@ -185,7 +127,7 @@ int main(int argc, char const *argv[]) {
 	src.RGB=raw_img;
 
 	Timer t1;
-	_WarpPerspective(src, dst, HomogMat);
+	WarpPerspective(src, dst, HomogMat);
 	t1.print("_WarpPerspective");
 
 	Raw2Img::raw2bmp("kanna2.bmp", dst.RGB, dst.getCol(), dst.getRow());
