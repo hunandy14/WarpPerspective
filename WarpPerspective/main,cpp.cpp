@@ -71,6 +71,7 @@ void WarpPerspective_CoorTranfer_Inve(const vector<double>& HomogMat, double& x,
 	x /= z;
 	y /= z;
 }
+// 块 scr 畒夹, 锣传 dst 块.
 void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& x, double& y) {
 	const double* H = HomogMat.data();
 	const double i=x, j=y;
@@ -96,15 +97,13 @@ void WarpPerspective_Corner(const vector<double>& HomogMat, vector<double>& cn) 
 		//cout << cn[i*2+0] << ", " << cn[i*2+1] << endl;
 
 	}
-	vector<double> cn2=cn;
-	
 	int max, min;
 	// т x 程程
 	max=INT_MIN, min=INT_MAX;
 	for(size_t i = 0; i < 4; i++) {
 		if(cn[i*2] > max) max=cn[i*2+0];
 		if(cn[i*2] < min) min=cn[i*2+0];
-	} cn[0] = max-min, cn[2] = min, cn[6] = max;
+	} cn[0] = max-min, cn[2] = min, cn[4] = max;
 	// т y 程程
 	max=INT_MIN, min=INT_MAX;
 	for(size_t i = 0; i < 4; i++) {
@@ -112,32 +111,22 @@ void WarpPerspective_Corner(const vector<double>& HomogMat, vector<double>& cn) 
 		if(cn[i*2 +1] < min) min=cn[i*2+1];
 	} cn[1] = max-min, cn[3] = min, cn[5] = max;
 
-	// 笹碝тタ絋
-	int bw=0, bh=0;
-	int dstW = cn[6], dstH=cn[7];
-
-	cn2[0]=cn[6];
-	cn2[1]=cn[5];
-
-	for(size_t i = 0; i < 100; i++) {
-		double w=cn2[0], h=cn2[1];
+// は笹碝тタ絋
+	double dstW, dstH, tarW=cn[4], tarH=cn[5];
+	for(size_t i=0, bw=0, bh=0; i < 100; i++) {
+		double w=tarW+i, h=tarH+i;
 		WarpPerspective_CoorTranfer_Inve(HomogMat, w, h);
 		if(w > srcW and bw==0) {
 			bw=1;
-			dstW=cn2[0];
+			dstW=cn[4]+i;
 		}
-			cn2[0]++;
 		if(h > srcH and bh==0) {
 			bh=1;
-			dstH=cn2[1];
+			dstH=cn[5]+i;
 		}
-			cn2[1]++;
-
-		if(bh==1 and bw==1) {
-			break;
-		}
+		if(bh==1 and bw==1) break;
 	}
-	cout << "\n\nfinal=" << dstW << ", " << dstH << endl;
+	//cout << "final=" << dstW << ", " << dstH << endl;
 	cn[0]=dstW-cn[2], cn[1]=dstH-cn[3];
 }
 // 硓跌锣传
@@ -154,7 +143,7 @@ void WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
 
 	//dst.resize(src.getCol(), src.getRow());
 	int newW= cn[0]+cn[2], newH=cn[1]+cn[3];
-	dst.resize(newW+1, newH+1);
+	dst.resize(newW-cn[2], (newH)-cn[3]);
 	//-------------------------------------
 	int s_Col = src.getCol();
 	int s_Row = src.getRow();
@@ -162,18 +151,23 @@ void WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
 	int d_Row = dst.getRow();
 	//-------------------------------------
 	int j, i;
-	double x, y;
+	double x=400, y=-30;
+	WarpPerspective_CoorTranfer_Inve(H, x, y);
+	cout << "xy=" << x << ", " << y << endl;
+
+	int miny=(-cn[3]);
+	int minx=(-cn[2]);
 #pragma omp parallel for private(i, j, x, y)
-	for (j = 0; j < d_Row; ++j) {
-		for (i = 0; i < d_Col; ++i){
+	for (j = -miny; j < d_Row-miny; ++j) {
+		for (i = -minx; i < d_Col-minx; ++i){
 			x = i, y = j;
 			WarpPerspective_CoorTranfer_Inve(H, x, y);
 			if ((x <= (double)s_Col-1.0 and x >= 0.0) and
 				(y <= (double)s_Row-1.0 and y >= 0.0))
 			{
-				dst.RGB[(j*d_Col + i)*3 + 0] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 0);
-				dst.RGB[(j*d_Col + i)*3 + 1] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 1);
-				dst.RGB[(j*d_Col + i)*3 + 2] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 2);
+				dst.RGB[((j+miny)*d_Col + (i+minx))*3 + 0] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 0);
+				dst.RGB[((j+miny)*d_Col + (i+minx))*3 + 1] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 1);
+				dst.RGB[((j+miny)*d_Col + (i+minx))*3 + 2] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 2);
 
 			}
 		}
