@@ -10,6 +10,33 @@ Final: 2017/06/14
 #include <timer.hpp>
 using namespace std;
 
+// 線性取值
+double atBilinear_rgb(const vector<unsigned char>& img, 
+	size_t width, double y, double x, size_t rgb)
+{
+	// 獲取鄰點(不能用 1+)
+	double x0 = floor(x);
+	double x1 = ceil(x);
+	double y0 = floor(y);
+	double y1 = ceil(y);
+	// 獲取比例(只能用 1-)
+	double dx1 = x - x0;
+	double dx2 = 1 - dx1;
+	double dy1 = y - y0;
+	double dy2 = 1 - dy1;
+	// 獲取點
+	const double&& A = (double)img[(y*width + x) * 3.0 +rgb];
+	const double&& B = (double)img[(y*width + x) * 3.0 +rgb];
+	const double&& C = (double)img[(y*width + x) * 3.0 +rgb];
+	const double&& D = (double)img[(y*width + x) * 3.0 +rgb];
+	// 乘出比例(要交叉)
+	double AB = A*dx2 + B*dx1;
+	double CD = C*dx2 + D*dx1;
+	double X = AB*dy2 + CD*dy1;
+	//double X = 0;
+	return X;
+}
+
 class Raw {
 public:
 	Raw() = default;
@@ -109,7 +136,7 @@ void _WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
 	int j, i;
 	double x, y;
 
-#pragma omp parallel for private(i, j, x, y)
+//#pragma omp parallel for private(i, j, x, y)
 	for (j = 0; j < d_Row; ++j)
 	{
 		dst_RGB = &dst.RGB[j * d_Col * 3];
@@ -118,13 +145,14 @@ void _WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
 			x = i, y = j;
 			WarpPerspective_CoorTranfer(H, x, y);
 
-			if (x < (double)s_Col && x >= 0.0 && y < (double)s_Row && y >= 0.0)
+			int x2=x, y2=y;
+			if ((x <= (double)s_Col-1.0 and x >= 0.0) and
+				(y <= (double)s_Row-1.0 and y >= 0.0))
 			{
-				color = bilinear(src, x, y);
+				dst_RGB[i*3 + 0] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 0);
+				dst_RGB[i*3 + 1] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 1);
+				dst_RGB[i*3 + 2] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 2);
 
-				dst_RGB[i * 3 + 0] = color.R;
-				dst_RGB[i * 3 + 1] = color.G;
-				dst_RGB[i * 3 + 2] = color.B;
 			}
 		}
 	}
