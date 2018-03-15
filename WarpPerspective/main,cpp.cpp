@@ -56,7 +56,7 @@ protected:
 };
 
 // 輸入 dst 座標, 反轉 scr 輸出.
-void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& x, double& y) {
+void WarpPerspective_CoorTranfer_Inve(const vector<double>& HomogMat, double& x, double& y) {
 	const double* H = HomogMat.data();
 	const double i=x, j=y;
 
@@ -66,20 +66,100 @@ void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& x, doub
 		(H[2] - H[8]*i) * (H[3] - H[6]*j);
 
 	double z = (H[1] - H[7]*i) * (H[3] - H[6]*j) - 
-		      (H[0] - H[6]*i) * (H[4] - H[7]*j);
+		(H[0] - H[6]*i) * (H[4] - H[7]*j);
 
 	x /= z;
 	y /= z;
 }
+void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& x, double& y) {
+	const double* H = HomogMat.data();
+	const double i=x, j=y;
 
+	x = H[0]*i + H[1]*y +H[2];
+	y = H[3]*i + H[4]*y +H[5];
+	double z = H[6]*i + H[7]*y +H[8];
+
+	x /= z;
+	y /= z;
+
+	//x=round(x);
+	//y=round(y);
+}
+// 透視轉換角點 輸入(xy*4) 輸出(dx, dy, minx, miny, maxx, maxy)
+void WarpPerspective_Corner(const vector<double>& HomogMat, vector<double>& cn) {
+	int srcW = cn[6], srcH=cn[7];
+	for(size_t i = 0; i < 4; i++) {
+		//cout << cn[i*2+0] << ", " << cn[i*2+1] << "----->";
+		WarpPerspective_CoorTranfer(HomogMat, cn[i*2+0], cn[i*2+1]);
+		cn[i*2+0] = round(cn[i*2+0]);
+		cn[i*2+1] = round(cn[i*2+1]);
+		//cout << cn[i*2+0] << ", " << cn[i*2+1] << endl;
+
+	}
+	vector<double> cn2=cn;
+	
+	int max, min;
+	// 找 x 最大最小
+	max=INT_MIN, min=INT_MAX;
+	for(size_t i = 0; i < 4; i++) {
+		if(cn[i*2] > max) max=cn[i*2+0];
+		if(cn[i*2] < min) min=cn[i*2+0];
+	} cn[0] = max-min, cn[2] = min, cn[6] = max;
+	// 找 y 最大最小
+	max=INT_MIN, min=INT_MAX;
+	for(size_t i = 0; i < 4; i++) {
+		if(cn[i*2 +1] > max) max=cn[i*2+1];
+		if(cn[i*2 +1] < min) min=cn[i*2+1];
+	} cn[1] = max-min, cn[3] = min, cn[5] = max;
+
+	// 逼近尋找正確值
+	int bw=0, bh=0;
+	int dstW = cn[6], dstH=cn[7];
+
+	cn2[0]=cn[6];
+	cn2[1]=cn[5];
+
+	for(size_t i = 0; i < 100; i++) {
+		double w=cn2[0], h=cn2[1];
+		WarpPerspective_CoorTranfer_Inve(HomogMat, w, h);
+		if(w > srcW and bw==0) {
+			bw=1;
+			dstW=cn2[0];
+		}
+			cn2[0]++;
+		if(h > srcH and bh==0) {
+			bh=1;
+			dstH=cn2[1];
+		}
+			cn2[1]++;
+
+		if(bh==1 and bw==1) {
+			break;
+		}
+	}
+	cout << "\n\nfinal=" << dstW << ", " << dstH << endl;
+	cn[0]=dstW-cn[2], cn[1]=dstH-cn[3];
+}
+// 透視轉換
 void WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
 {
-	dst.resize(src.getCol(), src.getRow());
+
 	//-------------------------------------
-	int d_Row = dst.getRow();
-	int d_Col = dst.getCol();
-	int s_Row = src.getRow();
+	vector<double> cn={
+		0, 0,  (double)(src.getCol()-1.0), 0,
+		0, (double)(src.getRow()-1.0),   ((double)src.getCol()-1.0), ((double)src.getRow()-1.0)
+	};
+	WarpPerspective_Corner(H, cn);
+	//cout << cn[0] << ", " << cn[1] << endl;
+
+	//dst.resize(src.getCol(), src.getRow());
+	int newW= cn[0]+cn[2], newH=cn[1]+cn[3];
+	dst.resize(newW+1, newH+1);
+	//-------------------------------------
 	int s_Col = src.getCol();
+	int s_Row = src.getRow();
+	int d_Col = dst.getCol();
+	int d_Row = dst.getRow();
 	//-------------------------------------
 	int j, i;
 	double x, y;
@@ -87,7 +167,7 @@ void WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
 	for (j = 0; j < d_Row; ++j) {
 		for (i = 0; i < d_Col; ++i){
 			x = i, y = j;
-			WarpPerspective_CoorTranfer(H, x, y);
+			WarpPerspective_CoorTranfer_Inve(H, x, y);
 			if ((x <= (double)s_Col-1.0 and x >= 0.0) and
 				(y <= (double)s_Row-1.0 and y >= 0.0))
 			{
