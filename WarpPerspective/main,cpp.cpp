@@ -89,13 +89,13 @@ void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& x, doub
 // 透視轉換角點 輸入(xy*4) 輸出(dx, dy, minx, miny, maxx, maxy)
 void WarpPerspective_Corner(const vector<double>& HomogMat, vector<double>& cn) {
 	int srcW = cn[6], srcH=cn[7];
+	// 透視轉換
 	for(size_t i = 0; i < 4; i++) {
 		//cout << cn[i*2+0] << ", " << cn[i*2+1] << "----->";
 		WarpPerspective_CoorTranfer(HomogMat, cn[i*2+0], cn[i*2+1]);
 		cn[i*2+0] = round(cn[i*2+0]);
 		cn[i*2+1] = round(cn[i*2+1]);
 		//cout << cn[i*2+0] << ", " << cn[i*2+1] << endl;
-
 	}
 	int max, min;
 	// 找 x 最大最小
@@ -110,64 +110,58 @@ void WarpPerspective_Corner(const vector<double>& HomogMat, vector<double>& cn) 
 		if(cn[i*2 +1] > max) max=cn[i*2+1];
 		if(cn[i*2 +1] < min) min=cn[i*2+1];
 	} cn[1] = max-min, cn[3] = min, cn[5] = max;
-
-// 反代逼近尋找正確值
+	// 反代逼近尋找正確值
 	double dstW, dstH, tarW=cn[4], tarH=cn[5];
 	for(size_t i=0, bw=0, bh=0; i < 100; i++) {
 		double w=tarW+i, h=tarH+i;
 		WarpPerspective_CoorTranfer_Inve(HomogMat, w, h);
-		if(w > srcW and bw==0) {
+		if(w > srcW and bw == 0) {
 			bw=1;
 			dstW=cn[4]+i;
 		}
-		if(h > srcH and bh==0) {
+		if(h > srcH and bh == 0) {
 			bh=1;
 			dstH=cn[5]+i;
 		}
 		if(bh==1 and bw==1) break;
 	}
 	//cout << "final=" << dstW << ", " << dstH << endl;
-	cn[0]=dstW-cn[2], cn[1]=dstH-cn[3];
+	cn[0] = dstW-cn[2], cn[1] = dstH-cn[3];
 }
-// 透視轉換
-void WarpPerspective(const Raw &src, Raw &dst, const vector<double> &H)
+// 圖像透視轉換
+void WarpPerspective(const Raw &src, Raw &dst, 
+	const vector<double> &H, bool clip=0)
 {
-
-	//-------------------------------------
+	int miny=0;
+	int minx=0;
+	// 輸入座標
 	vector<double> cn={
 		0, 0,  (double)(src.getCol()-1.0), 0,
 		0, (double)(src.getRow()-1.0),   ((double)src.getCol()-1.0), ((double)src.getRow()-1.0)
 	};
+	// 獲得轉換後最大邊點
 	WarpPerspective_Corner(H, cn);
-	//cout << cn[0] << ", " << cn[1] << endl;
-
-	//dst.resize(src.getCol(), src.getRow());
+	if(clip==1) miny=-cn[3], minx=-cn[2];
 	int newW= cn[0]+cn[2], newH=cn[1]+cn[3];
-	dst.resize(newW-cn[2], (newH)-cn[3]);
-	//-------------------------------------
-	int s_Col = src.getCol();
-	int s_Row = src.getRow();
-	int d_Col = dst.getCol();
-	int d_Row = dst.getRow();
-	//-------------------------------------
+	dst.resize(newW+minx, newH+miny);
+	// 透視投影
 	int j, i;
-	double x=400, y=-30;
-	WarpPerspective_CoorTranfer_Inve(H, x, y);
-	cout << "xy=" << x << ", " << y << endl;
-
-	int miny=(-cn[3]);
-	int minx=(-cn[2]);
+	double x, y;
+	int dstW = dst.getCol();
+	int dstH = dst.getRow();
+	int srcW = src.getCol();
+	int srcH = src.getRow();
 #pragma omp parallel for private(i, j, x, y)
-	for (j = -miny; j < d_Row-miny; ++j) {
-		for (i = -minx; i < d_Col-minx; ++i){
+	for (j = -miny; j < dstH-miny; ++j) {
+		for (i = -minx; i < dstW-minx; ++i){
 			x = i, y = j;
 			WarpPerspective_CoorTranfer_Inve(H, x, y);
-			if ((x <= (double)s_Col-1.0 and x >= 0.0) and
-				(y <= (double)s_Row-1.0 and y >= 0.0))
+			if ((x <= (double)srcW-1.0 && x >= 0.0) and
+				(y <= (double)srcH-1.0 && y >= 0.0))
 			{
-				dst.RGB[((j+miny)*d_Col + (i+minx))*3 + 0] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 0);
-				dst.RGB[((j+miny)*d_Col + (i+minx))*3 + 1] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 1);
-				dst.RGB[((j+miny)*d_Col + (i+minx))*3 + 2] = atBilinear_rgb(src.RGB, src.getCol(), y, x, 2);
+				dst.RGB[((j+miny)*dstW + (i+minx))*3 + 0] = atBilinear_rgb(src.RGB, srcW, y, x, 0);
+				dst.RGB[((j+miny)*dstW + (i+minx))*3 + 1] = atBilinear_rgb(src.RGB, srcW, y, x, 1);
+				dst.RGB[((j+miny)*dstW + (i+minx))*3 + 2] = atBilinear_rgb(src.RGB, srcW, y, x, 2);
 
 			}
 		}
@@ -201,7 +195,7 @@ int main(int argc, char const *argv[]) {
 	src.RGB=raw_img;
 
 	Timer t1;
-	WarpPerspective(src, dst, HomogMat);
+	WarpPerspective(src, dst, HomogMat, 1);
 	t1.print("_WarpPerspective");
 
 	Raw2Img::raw2bmp("kanna2.bmp", dst.RGB, dst.getCol(), dst.getRow());
