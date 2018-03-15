@@ -11,6 +11,7 @@ Final: 2017/06/14
 using namespace std;
 
 // 線性取值
+
 double atBilinear_rgb(const vector<unsigned char>& img, 
 	size_t width, double y, double x, size_t rgb)
 {
@@ -25,15 +26,14 @@ double atBilinear_rgb(const vector<unsigned char>& img,
 	double dy1 = y - y0;
 	double dy2 = 1 - dy1;
 	// 獲取點
-	const double&& A = (double)img[(y*width + x) * 3.0 +rgb];
-	const double&& B = (double)img[(y*width + x) * 3.0 +rgb];
-	const double&& C = (double)img[(y*width + x) * 3.0 +rgb];
-	const double&& D = (double)img[(y*width + x) * 3.0 +rgb];
+	const double&& A = (double)img[(y0*width+x0)*3 +rgb];
+	const double&& B = (double)img[(y0*width+x1)*3 +rgb];
+	const double&& C = (double)img[(y1*width+x0)*3 +rgb];
+	const double&& D = (double)img[(y1*width+x1)*3 +rgb];
 	// 乘出比例(要交叉)
 	double AB = A*dx2 + B*dx1;
 	double CD = C*dx2 + D*dx1;
 	double X = AB*dy2 + CD*dy1;
-	//double X = 0;
 	return X;
 }
 
