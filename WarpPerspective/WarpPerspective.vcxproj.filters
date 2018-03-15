@@ -21,7 +21,7 @@
     <ClCompile Include="Raw2Img\Raw2img.cpp">
       <Filter>來源檔案\Raw2img</Filter>
     </ClCompile>
-    <ClCompile Include="main,cpp.cpp">
+    <ClCompile Include="WarpPerspective_main.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
   </ItemGroup>

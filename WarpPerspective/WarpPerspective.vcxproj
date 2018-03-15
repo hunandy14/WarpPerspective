@@ -149,7 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main,cpp.cpp" />
+    <ClCompile Include="WarpPerspective_main.cpp" />
     <ClCompile Include="Raw2Img\Raw2img.cpp" />
   </ItemGroup>
   <ItemGroup>
