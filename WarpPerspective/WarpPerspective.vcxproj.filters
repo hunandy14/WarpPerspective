@@ -13,5 +13,24 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="來源檔案\Raw2img">
+      <UniqueIdentifier>{9602ff4b-1342-4644-a00f-dc2022882bc7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Raw2Img\Raw2img.cpp">
+      <Filter>來源檔案\Raw2img</Filter>
+    </ClCompile>
+    <ClCompile Include="main,cpp.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Raw2Img\Raw2img.hpp">
+      <Filter>來源檔案\Raw2img</Filter>
+    </ClInclude>
+    <ClInclude Include="Raw2Img\Raw2img_type.hpp">
+      <Filter>來源檔案\Raw2img</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
