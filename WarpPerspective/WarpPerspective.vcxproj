@@ -104,7 +104,8 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>
+      </LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -139,7 +140,8 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>
+      </LanguageStandard>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -157,6 +159,9 @@
     <ClInclude Include="Raw2Img\Raw2img.hpp" />
     <ClInclude Include="Raw2Img\Raw2img_type.hpp" />
     <ClInclude Include="WarpPers\WarpPers.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

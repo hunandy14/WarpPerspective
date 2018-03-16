@@ -24,7 +24,7 @@ int main(int argc, char const *argv[]) {
 
 	test1("kanna.bmp", HomogMat);
 	test2("kanna.bmp", HomogMat);
-
+	test3("kanna.bmp", HomogMat);
 	return 0;
 }
 //================================================================

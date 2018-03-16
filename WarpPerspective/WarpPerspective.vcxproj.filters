@@ -42,4 +42,9 @@
       <Filter>來源檔案\WarpPers</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Filter>資源檔</Filter>
+    </None>
+  </ItemGroup>
 </Project>

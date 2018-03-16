@@ -6,12 +6,15 @@ Final: 2018/03/16
 *****************************************************************/
 #pragma once
 
+using std::vector;
+using std::string;
+
 class ImgRaw_basic {
 public:
 	using uch = unsigned char;
 public:
 	ImgRaw_basic() = default;
-	ImgRaw_basic(vector<uch> raw_img,	
+	ImgRaw_basic(std::vector<uch> raw_img,	
 		uint32_t width, uint32_t heigh,	uint16_t bits):
 		raw_img(raw_img), width(width), height(heigh), bits() {}
 public:
@@ -28,10 +31,10 @@ public:
 		return sizePix()*bits;
 	}
 public:
-	operator vector<uch>&() {
+	operator std::vector<uch>&() {
 		return raw_img;
 	}
-	operator const vector<uch>& const() {
+	operator const std::vector<uch>& () const {
 		return raw_img;
 	}
 	uch& operator[](size_t idx) {
@@ -41,7 +44,7 @@ public:
 		return raw_img[idx];
 	}
 public:
-	vector<uch> raw_img;
+	std::vector<uch> raw_img;
 	uint32_t width;
 	uint32_t height;
 	uint16_t bits;
@@ -67,5 +70,9 @@ protected:
 
 void WarpPerspective(const ImgRaw_basic & src, ImgRaw_basic & dst, const vector<double>& H, bool clip);
 void test1(string name, const vector<double>& HomogMat);
+
 void WarpPerspective(const Raw & src, Raw & dst, const vector<double>& H, bool clip);
 void test2(string name, const vector<double>& HomogMat);
+
+void WarpPerspective(const vector<unsigned char>& src, const uint32_t srcW, const uint32_t srcH, vector<unsigned char>& dst, uint32_t & dstW, uint32_t & dstH, const vector<double>& H, bool clip);
+void test3(string name, const vector<double>& HomogMat);
