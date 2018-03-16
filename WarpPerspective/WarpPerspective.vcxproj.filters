@@ -16,12 +16,18 @@
     <Filter Include="來源檔案\Raw2img">
       <UniqueIdentifier>{9602ff4b-1342-4644-a00f-dc2022882bc7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="來源檔案\WarpPers">
+      <UniqueIdentifier>{71b9636b-7215-4000-8a6d-d59bb9891ecd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raw2Img\Raw2img.cpp">
       <Filter>來源檔案\Raw2img</Filter>
     </ClCompile>
-    <ClCompile Include="WarpPerspective_main.cpp">
+    <ClCompile Include="WarpPers\WarpPers.cpp">
+      <Filter>來源檔案\WarpPers</Filter>
+    </ClCompile>
+    <ClCompile Include="WarpPers_main.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
   </ItemGroup>
@@ -31,6 +37,9 @@
     </ClInclude>
     <ClInclude Include="Raw2Img\Raw2img_type.hpp">
       <Filter>來源檔案\Raw2img</Filter>
+    </ClInclude>
+    <ClInclude Include="WarpPers\WarpPers.hpp">
+      <Filter>來源檔案\WarpPers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

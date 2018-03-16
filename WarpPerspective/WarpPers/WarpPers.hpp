@@ -1,0 +1,71 @@
+/*****************************************************************
+Name :
+Date : 2018/03/15
+By   : CharlotteHonG
+Final: 2018/03/16
+*****************************************************************/
+#pragma once
+
+class ImgRaw_basic {
+public:
+	using uch = unsigned char;
+public:
+	ImgRaw_basic() = default;
+	ImgRaw_basic(vector<uch> raw_img,	
+		uint32_t width, uint32_t heigh,	uint16_t bits):
+		raw_img(raw_img), width(width), height(heigh), bits() {}
+public:
+	void resize(uint32_t width, uint32_t heigh,	uint16_t bits) {
+		raw_img.resize(width * heigh * bits/8.0);
+		this->width=width;
+		this->height=heigh;
+		this->bits=bits;
+	}
+	size_t sizePix() {
+		return width*height;
+	}
+	size_t size() {
+		return sizePix()*bits;
+	}
+public:
+	operator vector<uch>&() {
+		return raw_img;
+	}
+	operator const vector<uch>& const() {
+		return raw_img;
+	}
+	uch& operator[](size_t idx) {
+		return raw_img[idx];
+	}
+	const uch& operator[](size_t idx) const {
+		return raw_img[idx];
+	}
+public:
+	vector<uch> raw_img;
+	uint32_t width;
+	uint32_t height;
+	uint16_t bits;
+};
+class Raw {
+public:
+	Raw() = default;
+	Raw(size_t w, size_t h) :
+		RGB(w*h * 3), col(w), row(h) {}
+	void resize(size_t w, size_t h){
+		RGB.resize(w*h*3);
+		col=w, row=h;
+	}
+	int getCol() const { return (int)col; }
+	int getRow() const { return (int)row; }
+public:
+	std::vector<unsigned char> RGB;
+protected:
+	size_t col;
+	size_t row;
+};
+
+
+void WarpPerspective(const ImgRaw_basic & src, ImgRaw_basic & dst, const vector<double>& H, bool clip);
+void test1(string name, const vector<double>& HomogMat);
+void WarpPerspective(const Raw & src, Raw & dst, const vector<double>& H, bool clip);
+void test2(string name, const vector<double>& HomogMat);

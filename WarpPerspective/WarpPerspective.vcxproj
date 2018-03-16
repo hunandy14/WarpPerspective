@@ -102,7 +102,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
       <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
@@ -137,7 +137,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
       <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
@@ -149,12 +149,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="WarpPerspective_main.cpp" />
+    <ClCompile Include="WarpPers_main.cpp" />
     <ClCompile Include="Raw2Img\Raw2img.cpp" />
+    <ClCompile Include="WarpPers\WarpPers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Raw2Img\Raw2img.hpp" />
     <ClInclude Include="Raw2Img\Raw2img_type.hpp" />
+    <ClInclude Include="WarpPers\WarpPers.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
