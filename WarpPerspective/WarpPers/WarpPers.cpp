@@ -123,7 +123,7 @@ static vector<double> WarpPerspective_Corner(
 
 
 // 圖像透視轉換 ImgRaw_basic 物件
-void WarpPerspective(const ImgRaw_basic &src, ImgRaw_basic &dst, 
+void WarpPerspective(const basic_ImgData &src, basic_ImgData &dst, 
 	const vector<double> &H, bool clip=0)
 {
 	int srcW = src.width;
@@ -136,7 +136,11 @@ void WarpPerspective(const ImgRaw_basic &src, ImgRaw_basic &dst,
 	// 終點位置
 	int dstW = cn[0]+cn[2]+minx;
 	int dstH = cn[1]+cn[3]+miny;
-	dst.resize(dstW, dstH, src.bits);
+	// 初始化 dst
+	dst.raw_img.resize(dstW * dstH * src.bits/8.0);
+	dst.width = dstW;
+	dst.height = dstH;
+	dst.bits = src.bits;
 	// 透視投影
 	int j, i;
 	double x, y; 
@@ -149,9 +153,9 @@ void WarpPerspective(const ImgRaw_basic &src, ImgRaw_basic &dst,
 			if ((x <= (double)srcW-1.0 && x >= 0.0) and
 				(y <= (double)srcH-1.0 && y >= 0.0))
 			{
-				dst[((j+miny)*dstW + (i+minx))*3 + 0] = atBilinear_rgb(src, srcW, y, x, 0);
-				dst[((j+miny)*dstW + (i+minx))*3 + 1] = atBilinear_rgb(src, srcW, y, x, 1);
-				dst[((j+miny)*dstW + (i+minx))*3 + 2] = atBilinear_rgb(src, srcW, y, x, 2);
+				dst.raw_img[((j+miny)*dstW + (i+minx))*3 + 0] = atBilinear_rgb(src.raw_img, srcW, y, x, 0);
+				dst.raw_img[((j+miny)*dstW + (i+minx))*3 + 1] = atBilinear_rgb(src.raw_img, srcW, y, x, 1);
+				dst.raw_img[((j+miny)*dstW + (i+minx))*3 + 2] = atBilinear_rgb(src.raw_img, srcW, y, x, 2);
 
 			}
 		}
@@ -160,13 +164,13 @@ void WarpPerspective(const ImgRaw_basic &src, ImgRaw_basic &dst,
 void test1(string name, const vector<double>& HomogMat) {
 	Timer t1;
 
-	ImgRaw_basic img1, img2;
-	Raw2Img::read_bmp(img1, name, &img1.width, &img1.height, &img1.bits);
+	basic_ImgData img1, img2;
+	Raw2Img::read_bmp(img1.raw_img, name, &img1.width, &img1.height, &img1.bits);
 	t1.start();
-	WarpPerspective(img1, img2, HomogMat, 1);
+	WarpPerspective(img1, img2, HomogMat, 0);
 	t1.print(" WarpPerspective");
 
-	Raw2Img::raw2bmp("WarpPers1.bmp", img2, img2.width, img2.height, img2.bits);
+	Raw2Img::raw2bmp("WarpPers1.bmp", img2.raw_img, img2.width, img2.height, img2.bits);
 }
 
 // 圖像透視轉換 Raw 物件

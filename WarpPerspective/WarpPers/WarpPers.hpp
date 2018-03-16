@@ -9,12 +9,37 @@ Final: 2018/03/16
 using std::vector;
 using std::string;
 
-class ImgRaw_basic {
+struct basic_ImgData {
+	std::vector<unsigned char> raw_img;
+	uint32_t width;
+	uint32_t height;
+	uint16_t bits;
+};
+
+class Raw {
+public:
+	Raw() = default;
+	Raw(size_t w, size_t h) :
+		RGB(w*h * 3), col(w), row(h) {}
+	void resize(size_t w, size_t h){
+		RGB.resize(w*h*3);
+		col=w, row=h;
+	}
+	int getCol() const { return (int)col; }
+	int getRow() const { return (int)row; }
+public:
+	std::vector<unsigned char> RGB;
+protected:
+	size_t col;
+	size_t row;
+};
+
+/*class _ImgRaw {
 public:
 	using uch = unsigned char;
 public:
-	ImgRaw_basic() = default;
-	ImgRaw_basic(std::vector<uch> raw_img,	
+	_ImgRaw() = default;
+	_ImgRaw(std::vector<uch> raw_img,	
 		uint32_t width, uint32_t heigh,	uint16_t bits):
 		raw_img(raw_img), width(width), height(heigh), bits() {}
 public:
@@ -48,27 +73,9 @@ public:
 	uint32_t width;
 	uint32_t height;
 	uint16_t bits;
-};
-class Raw {
-public:
-	Raw() = default;
-	Raw(size_t w, size_t h) :
-		RGB(w*h * 3), col(w), row(h) {}
-	void resize(size_t w, size_t h){
-		RGB.resize(w*h*3);
-		col=w, row=h;
-	}
-	int getCol() const { return (int)col; }
-	int getRow() const { return (int)row; }
-public:
-	std::vector<unsigned char> RGB;
-protected:
-	size_t col;
-	size_t row;
-};
+};*/
 
-
-void WarpPerspective(const ImgRaw_basic & src, ImgRaw_basic & dst, const vector<double>& H, bool clip);
+void WarpPerspective(const basic_ImgData & src, basic_ImgData & dst, const vector<double>& H, bool clip);
 void test1(string name, const vector<double>& HomogMat);
 
 void WarpPerspective(const Raw & src, Raw & dst, const vector<double>& H, bool clip);
