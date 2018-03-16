@@ -83,3 +83,6 @@ void test2(string name, const vector<double>& HomogMat);
 
 void WarpPerspective(const vector<unsigned char>& src, const uint32_t srcW, const uint32_t srcH, vector<unsigned char>& dst, uint32_t & dstW, uint32_t & dstH, const vector<double>& H, bool clip);
 void test3(string name, const vector<double>& HomogMat);
+
+void WarpPers_Stitch(basic_ImgData & matchImg, const basic_ImgData & imgL, const basic_ImgData & imgR, const vector<double>& HomogMat);
+void test_WarpPers_Stitch();
