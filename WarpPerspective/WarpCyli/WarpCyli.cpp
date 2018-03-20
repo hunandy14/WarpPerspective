@@ -64,21 +64,21 @@ static void Bilinear_rgb(unsigned char* p, const vector<unsigned char>& img,
 	B = img[(y0*width + x1)*3 +rgb];
 	C = img[(y1*width + x0)*3 +rgb];
 	D = img[(y1*width + x1)*3 +rgb];
-	*(p+rgb) = A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1;
+	*(p+rgb) = (unsigned char)(A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1);
 
 	rgb=1;
 	A = img[(y0*width + x0)*3 +rgb];
 	B = img[(y0*width + x1)*3 +rgb];
 	C = img[(y1*width + x0)*3 +rgb];
 	D = img[(y1*width + x1)*3 +rgb];
-	*(p+rgb) = A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1;
+	*(p+rgb) = (unsigned char)(A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1);
 
 	rgb=2;
 	A = img[(y0*width + x0)*3 +rgb];
 	B = img[(y0*width + x1)*3 +rgb];
 	C = img[(y1*width + x0)*3 +rgb];
 	D = img[(y1*width + x1)*3 +rgb];
-	*(p+rgb) = A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1;
+	*(p+rgb) = (unsigned char)(A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1);
 }
 
 
@@ -131,7 +131,6 @@ static Color bilinear(const Raw &src, float _x, float _y)
 	color.R = (unsigned char)(R > 255.0 ? 255 : R < 0.0 ? 0 : R);
 	color.G = (unsigned char)(G > 255.0 ? 255 : G < 0.0 ? 0 : G);
 	color.B = (unsigned char)(B > 255.0 ? 255 : B < 0.0 ? 0 : B);
-
 	return color;
 }
 /************************ Functions prototyped here **************************/
@@ -169,7 +168,7 @@ Raw DealWithImgData(Raw &srcdata, int width, int height, double R)
 				drcdata_RGB[i * 3 + 0] = color.R;
 				drcdata_RGB[i * 3 + 1] = color.G;
 				drcdata_RGB[i * 3 + 2] = color.B;
-
+				// 不懂為什麼比較慢
 				/*unsigned char* p = &drcdata.RGB[((j+(height / 2))*width + (i))*3 + 0];
 				Bilinear_rgb(p, srcdata.RGB, width, y, x);*/
 			}
