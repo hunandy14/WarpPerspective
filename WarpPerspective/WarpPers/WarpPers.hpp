@@ -9,14 +9,7 @@ Final: 2018/03/16
 using std::vector;
 using std::string;
 
-struct basic_ImgData {
-	std::vector<unsigned char> raw_img;
-	uint32_t width;
-	uint32_t height;
-	uint16_t bits;
-};
-
-class Raw {
+/*class Raw {
 public:
 	Raw() = default;
 	Raw(size_t w, size_t h) :
@@ -32,7 +25,7 @@ public:
 protected:
 	size_t col;
 	size_t row;
-};
+};*/
 
 /*class _ImgRaw {
 public:
@@ -78,8 +71,8 @@ public:
 void WarpPerspective(const basic_ImgData & src, basic_ImgData & dst, const vector<double>& H, bool clip);
 void test1(string name, const vector<double>& HomogMat);
 
-void WarpPerspective(const Raw & src, Raw & dst, const vector<double>& H, bool clip);
-void test2(string name, const vector<double>& HomogMat);
+/*void WarpPerspective(const Raw & src, Raw & dst, const vector<double>& H, bool clip);
+void test2(string name, const vector<double>& HomogMat);*/
 
 void WarpPerspective(const vector<unsigned char>& src, const uint32_t srcW, const uint32_t srcH, vector<unsigned char>& dst, uint32_t & dstW, uint32_t & dstH, const vector<double>& H, bool clip);
 void test3(string name, const vector<double>& HomogMat);

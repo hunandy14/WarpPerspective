@@ -89,6 +89,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers;$(ProjectDir)\WarpCyli</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -102,7 +103,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers;$(ProjectDir)\WarpCyli</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
       <LanguageStandard>
       </LanguageStandard>
@@ -121,6 +122,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers;$(ProjectDir)\WarpCyli</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -138,7 +140,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Raw2img;$(ProjectDir)\WarpPers;$(ProjectDir)\WarpCyli</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
       <LanguageStandard>
       </LanguageStandard>
@@ -151,6 +153,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="WarpCyli\WarpCyli.cpp" />
     <ClCompile Include="WarpPers_main.cpp" />
     <ClCompile Include="Raw2Img\Raw2img.cpp" />
     <ClCompile Include="WarpPers\WarpPers.cpp" />
@@ -158,6 +161,8 @@
   <ItemGroup>
     <ClInclude Include="Raw2Img\Raw2img.hpp" />
     <ClInclude Include="Raw2Img\Raw2img_type.hpp" />
+    <ClInclude Include="WarpCyli\imagedata.hpp" />
+    <ClInclude Include="WarpCyli\WarpCyli.hpp" />
     <ClInclude Include="WarpPers\WarpPers.hpp" />
   </ItemGroup>
   <ItemGroup>

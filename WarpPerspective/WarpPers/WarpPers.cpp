@@ -13,6 +13,8 @@ using namespace std;
 
 #include "WarpPers.hpp"
 
+
+
 // 線性取值
 static double atBilinear_rgb(const vector<unsigned char>& img, 
 	size_t width, double y, double x, size_t rgb)
@@ -174,7 +176,7 @@ void test1(string name, const vector<double>& HomogMat) {
 }
 
 // 圖像透視轉換 Raw 物件
-void WarpPerspective(const Raw &src, Raw &dst, 
+/*void WarpPerspective(const Raw &src, Raw &dst, 
 	const vector<double> &H, bool clip=0)
 {
 
@@ -224,7 +226,7 @@ void test2(string name, const vector<double>& HomogMat) {
 	WarpPerspective(src, dst, HomogMat, 1);
 	t1.print(" WarpPerspective");
 	Raw2Img::raw2bmp("WarpPers2.bmp", dst.RGB, dst.getCol(), dst.getRow());
-}
+}*/
 
 // 圖像透視轉換 non 物件
 void WarpPerspective(

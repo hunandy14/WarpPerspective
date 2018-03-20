@@ -19,6 +19,9 @@
     <Filter Include="來源檔案\WarpPers">
       <UniqueIdentifier>{71b9636b-7215-4000-8a6d-d59bb9891ecd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="來源檔案\WarpCylindrical">
+      <UniqueIdentifier>{9ea4332c-0540-41b4-9968-e13b1da09713}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raw2Img\Raw2img.cpp">
@@ -30,6 +33,9 @@
     <ClCompile Include="WarpPers_main.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
+    <ClCompile Include="WarpCyli\WarpCyli.cpp">
+      <Filter>來源檔案\WarpCylindrical</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Raw2Img\Raw2img.hpp">
@@ -40,6 +46,12 @@
     </ClInclude>
     <ClInclude Include="WarpPers\WarpPers.hpp">
       <Filter>來源檔案\WarpPers</Filter>
+    </ClInclude>
+    <ClInclude Include="WarpCyli\imagedata.hpp">
+      <Filter>來源檔案\WarpCylindrical</Filter>
+    </ClInclude>
+    <ClInclude Include="WarpCyli\WarpCyli.hpp">
+      <Filter>來源檔案\WarpCylindrical</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

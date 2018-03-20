@@ -5,6 +5,15 @@ By   : CharlotteHonG
 Final: 2017/06/23
 *****************************************************************/
 #pragma once
+
+struct basic_ImgData {
+	std::vector<unsigned char> raw_img;
+	uint32_t width;
+	uint32_t height;
+	uint16_t bits;
+};
+
+
 /*
     ########   ######   ########
     ##     ## ##    ##  ##     ##
