@@ -6,6 +6,7 @@
 #include <timer.hpp>
 using namespace std;
 
+#include "Raw2Img.hpp"
 #include "imagedata.hpp"
 #include "WarpCyli.hpp"
 
@@ -81,6 +82,43 @@ static void Bilinear_rgb(unsigned char* p, const vector<unsigned char>& img,
 	*(p+rgb) = (unsigned char)(A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1);
 }
 
+// 快速 線性插值 (不做任何檢查可能會超出邊界)
+static void fast_Bilinear_rgb(unsigned char* p, 
+	const basic_ImgData& src, lineType y, lineType x)
+{
+	// 起點
+	int _x = (int)x;
+	int _y = (int)y;
+	// 左邊比值
+	float l_x = x - (float)_x;
+	float r_x = 1.f - l_x;
+	float t_y = y - (float)_y;
+	float b_y = 1.f - t_y;
+	int srcW = src.width;
+	int srcH = src.height;
+	// 計算RGB
+	float R = 0.f, G = 0.f, B = 0.f;
+	R = (float)src.raw_img[((_y)* srcW + (_x)) * 3 + 0] * (r_x * b_y);
+	G = (float)src.raw_img[((_y)* srcW + (_x)) * 3 + 1] * (r_x * b_y);
+	B = (float)src.raw_img[((_y)* srcW + (_x)) * 3 + 2] * (r_x * b_y);
+
+	R += (float)src.raw_img[((_y)* srcW + (_x + 1)) * 3 + 0] * (l_x * b_y);
+	G += (float)src.raw_img[((_y)* srcW + (_x + 1)) * 3 + 1] * (l_x * b_y);
+	B += (float)src.raw_img[((_y)* srcW + (_x + 1)) * 3 + 2] * (l_x * b_y);
+						
+	R += (float)src.raw_img[((_y + 1) * srcW + (_x)) * 3 + 0] * (r_x * t_y);
+	G += (float)src.raw_img[((_y + 1) * srcW + (_x)) * 3 + 1] * (r_x * t_y);
+	B += (float)src.raw_img[((_y + 1) * srcW + (_x)) * 3 + 2] * (r_x * t_y);
+						
+	R += (float)src.raw_img[((_y + 1) * srcW + (_x + 1)) * 3 + 0] * (l_x * t_y);
+	G += (float)src.raw_img[((_y + 1) * srcW + (_x + 1)) * 3 + 1] * (l_x * t_y);
+	B += (float)src.raw_img[((_y + 1) * srcW + (_x + 1)) * 3 + 2] * (l_x * t_y);
+
+	*(p+0) = (unsigned char) R;
+	*(p+1) = (unsigned char) G;
+	*(p+2) = (unsigned char) B;
+}
+
 struct Color {
 	unsigned char R;
 	unsigned char G;
@@ -134,7 +172,7 @@ static Color bilinear(const Raw &src, float _x, float _y)
 /************************ Functions prototyped here **************************/
 
 // 圓柱投影座標反轉換
-inline static void WarpPerspective_CoorTranfer_Inve(
+inline static void WarpCylindrical_CoorTranfer_Inve(
 	double R, size_t width, size_t height, 
 	double& x, double& y)
 {
@@ -153,24 +191,55 @@ void DealWithImgData(Raw &dst, const Raw &src, double R)
 	
 	int j, i;
 	double* k_num = new double[width];
-	double Rr = 1.0/R;
 	// 圓柱投影
 #pragma omp parallel for private(i, j)
 	for (j = -(height / 2); j < (height * 3 / 2); j++){
 		unsigned char* drcdata_RGB = &dst.RGB[(j + (height / 2)) * width * 3];
 		for (i = 0; i < width; i++){
 			double x = i, y = j;
-			WarpPerspective_CoorTranfer_Inve(R, width, height, x, y);
+			WarpCylindrical_CoorTranfer_Inve(R, width, height, x, y);
 
 			if (x >= 0 && y >= 0 && x < width - 1 && y < height - 1)
 			{
-				Color color = bilinear(src, x, y);
+				/*Color color = bilinear(src, x, y);
 				drcdata_RGB[i * 3 + 0] = color.R;
 				drcdata_RGB[i * 3 + 1] = color.G;
-				drcdata_RGB[i * 3 + 2] = color.B;
+				drcdata_RGB[i * 3 + 2] = color.B;*/
+
 				// 不懂為什麼比較慢
-				/*unsigned char* p = &drcdata.RGB[((j+(height / 2))*width + (i))*3 + 0];
-				Bilinear_rgb(p, srcdata.RGB, width, y, x);*/
+				/*unsigned char* p = &dst.RGB[((j+(h / 2))*w + (i))*3 + 0];
+				Bilinear_rgb(p, src.RGB, w, y, x);*/
+				
+				/*unsigned char* p = &dst.RGB[((j+(h / 2))*w + (i))*3 + 0];
+				fast_Bilinear_rgb(p, src, y, x);*/
+			}
+		}
+	}
+}
+
+void WarpCylindrical(basic_ImgData &dst, const basic_ImgData &src, 
+	double R ,int mx, int my, double edge)
+{
+	int w = src.width;
+	int h = src.height;
+	int moveH = (h*edge) + my;
+	unsigned int moveW = mx;
+
+	dst.raw_img.clear();
+	dst.raw_img.resize((w+moveW)*3 *h *(1+edge*2));
+	dst.width = w+moveW;
+	dst.height = h * (1+edge*2);
+
+	int j, i;
+	// 圓柱投影
+#pragma omp parallel for private(i, j)
+	for (j = 0; j < h; j++){
+		for (i = 0; i < w; i++){
+			double x = i, y = j;
+			WarpCylindrical_CoorTranfer_Inve(R, w, h, x, y);
+			if (x >= 0 && y >= 0 && x < w - 1 && y < h - 1) {
+				unsigned char* p = &dst.raw_img[((j+moveH)*(w+moveW) + (i+moveW)) *3];
+				fast_Bilinear_rgb(p, src, y, x);
 			}
 		}
 	}

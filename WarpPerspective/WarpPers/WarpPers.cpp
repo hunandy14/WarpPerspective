@@ -199,7 +199,7 @@ void test1(string name, const vector<double>& HomogMat) {
 	for (j = -miny; j < dstH-miny; ++j) {
 		for (i = -minx; i < dstW-minx; ++i){
 			x = i, y = j;
-			WarpPerspective_CoorTranfer_Inve(H, x, y);
+			WarpCylindrical_CoorTranfer_Inve(H, x, y);
 			if ((x <= (double)srcW-1.0 && x >= 0.0) and
 				(y <= (double)srcH-1.0 && y >= 0.0))
 			{
@@ -282,7 +282,7 @@ void test3(string name, const vector<double>& HomogMat) {
 
 
 // 透視轉換縫合範例
-void WarpPers_Stitch(basic_ImgData& matchImg, 
+void Alpha_Blend(basic_ImgData& matchImg, 
 	const basic_ImgData& imgL, const basic_ImgData& imgR, 
 	const vector<double>& HomogMat)
 {
@@ -349,7 +349,7 @@ void test_WarpPers_Stitch() {
 	// 縫合影像
 	basic_ImgData matchImg;
 	t1.start();
-	WarpPers_Stitch(matchImg, img1, img2, HomogMat);
-	t1.print(" WarpPers_Stitch");
-	Raw2Img::raw2bmp("WarpPers_Stitch.bmp", matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
+	Alpha_Blend(matchImg, img1, img2, HomogMat);
+	t1.print(" Alpha_Blend");
+	Raw2Img::raw2bmp("Alpha_Blend.bmp", matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
 }
