@@ -24,11 +24,6 @@ int main(int argc, char const *argv[]) {
 	};
 	double ft = 672.673, Ax=752-533, Ay=500-496;
 
-	/* 透視投影 */
-	//test1("sc03.bmp", HomogMat);
-	//test2("kanna.bmp", HomogMat);
-	//test3("kanna.bmp", HomogMat);
-
 	/* 透視投影實現縫合 */
 	test_WarpPers_Stitch();
 
