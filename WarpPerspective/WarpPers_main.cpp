@@ -12,8 +12,6 @@ Final: 2018/03/16
 using namespace std;
 
 #include "WarpPers.hpp"
-
-#include "imagedata.hpp"
 #include "WarpCyli.hpp"
 
 //================================================================

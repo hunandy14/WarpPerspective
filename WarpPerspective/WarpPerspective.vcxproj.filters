@@ -47,9 +47,6 @@
     <ClInclude Include="WarpPers\WarpPers.hpp">
       <Filter>來源檔案\WarpPers</Filter>
     </ClInclude>
-    <ClInclude Include="WarpCyli\imagedata.hpp">
-      <Filter>來源檔案\WarpCylindrical</Filter>
-    </ClInclude>
     <ClInclude Include="WarpCyli\WarpCyli.hpp">
       <Filter>來源檔案\WarpCylindrical</Filter>
     </ClInclude>

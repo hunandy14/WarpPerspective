@@ -161,7 +161,6 @@
   <ItemGroup>
     <ClInclude Include="Raw2Img\Raw2img.hpp" />
     <ClInclude Include="Raw2Img\Raw2img_type.hpp" />
-    <ClInclude Include="WarpCyli\imagedata.hpp" />
     <ClInclude Include="WarpCyli\WarpCyli.hpp" />
     <ClInclude Include="WarpPers\WarpPers.hpp" />
   </ItemGroup>

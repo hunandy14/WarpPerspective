@@ -40,7 +40,6 @@ static double atBilinear_rgb(const vector<unsigned char>& img,
 	double X = AB*dy2 + CD*dy1;
 	return X;
 }
-
 // 快速 線性插值 (不做任何檢查可能會超出邊界)
 static void fast_Bilinear_rgb(unsigned char* p, 
 	const basic_ImgData& src, double y, double x)
@@ -55,6 +54,7 @@ static void fast_Bilinear_rgb(unsigned char* p,
 	float b_y = 1.f - t_y;
 	int srcW = src.width;
 	int srcH = src.height;
+
 	// 計算RGB
 	float R = 0.f, G = 0.f, B = 0.f;
 	R = (float)src.raw_img[((_y)* srcW + (_x)) * 3 + 0] * (r_x * b_y);
@@ -77,6 +77,63 @@ static void fast_Bilinear_rgb(unsigned char* p,
 	*(p+1) = (unsigned char) G;
 	*(p+2) = (unsigned char) B;
 }
+// 比例混合
+inline static 
+void AlphaBlend(basic_ImgData& matchImg, 
+	const basic_ImgData& imgL, const basic_ImgData& imgR) {
+	// R 圖先補上去
+	matchImg=imgR;
+	// 比例混合
+	int i, j, start, end;
+#pragma omp parallel for private(i, j, start, end)
+	for(j = 0; j < imgL.height; j++) {
+		start = imgL.width;
+		end = imgL.width;
+		for(i = 0; i <= (imgL.width-1); i++) {
+			if( (imgR.raw_img[j*imgR.width*3 + i*3+0] == 0 and 
+				imgR.raw_img[j*imgR.width*3 + i*3+1] == 0 and
+				imgR.raw_img[j*imgR.width*3 + i*3+2] == 0)
+				)
+			{
+				// 這裡要補原圖 L 的.
+				matchImg.raw_img[j*matchImg.width*3 + i*3+0] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+0];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+1] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+1];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+2] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+2];
+			} else {
+				if(imgL.raw_img[j*imgL.width*3 + i*3+0] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+1] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+2] != 0)
+				{
+					// 這裡是重疊處.
+					if(start==end) {
+						start=i; // 紀錄起頭
+					}
+					if(start<end) {
+						float len = end-start;
+						float ratioR = (i-start)/len;
+						float ratioL = 1.0 - ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+0] = //100;
+							imgL.raw_img[j*imgL.width*3 + i*3+0]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+0]*ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+1] = //0;
+							imgL.raw_img[j*imgL.width*3 + i*3+1]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+1]*ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+2] = //0;
+							imgL.raw_img[j*imgL.width*3 + i*3+2]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+2]*ratioR;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+
 
 // 輸入 dst 座標, 反轉 scr 輸出.
 static void WarpPerspective_CoorTranfer_Inve(const vector<double>& HomogMat, double& x, double& y) {
@@ -109,7 +166,6 @@ static void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& 
 	//x=round(x);
 	//y=round(y);
 }
-
 // 透視轉換角點 輸入(xy*4) 輸出(dx, dy, minx, miny, maxx, maxy)
 static vector<double> WarpPerspective_Corner(
 	const vector<double>& HomogMat, size_t srcW, size_t srcH)
@@ -159,8 +215,6 @@ static vector<double> WarpPerspective_Corner(
 
 	return cn;
 }
-
-
 // 圖像透視轉換 ImgRaw_basic 物件
 void WarpPerspective(const basic_ImgData &src, basic_ImgData &dst, 
 	const vector<double> &H, bool clip=0)
@@ -212,6 +266,40 @@ void test1(string name, const vector<double>& HomogMat) {
 
 	Raw2Img::raw2bmp("WarpPers1.bmp", img2.raw_img, img2.width, img2.height, img2.bits);
 }
+// 透視轉換縫合範例
+void test_WarpPers_Stitch() {
+	Timer t1;
+	// 透視矩陣
+	const vector<double> HomogMat{
+		0.708484   ,  0.00428145 , 245.901,
+		-0.103356   ,  0.888676   , 31.6815,
+		-0.000390072, -1.61619e-05, 1
+	};
+
+	// 讀取影像
+	basic_ImgData img1;
+	Raw2Img::read_bmp(img1.raw_img, "sc02.bmp", &img1.width, &img1.height, &img1.bits);
+	basic_ImgData img2;
+	Raw2Img::read_bmp(img2.raw_img, "sc03.bmp", &img2.width, &img2.height, &img2.bits);
+
+	// 透視投影
+	basic_ImgData warpImg;
+	t1.start();
+	WarpPerspective(img2, warpImg, HomogMat, 0);
+	t1.print(" WarpPerspective");
+
+	// 縫合影像
+	t1.start();
+	basic_ImgData matchImg;
+	AlphaBlend(matchImg, img1, warpImg);
+	t1.print(" WarpPers_Stitch");
+	Raw2Img::raw2bmp("WarpPers_AlphaBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
+}
+
+
+
+
+
 
 // 圖像透視轉換 Raw 物件
 /*void WarpPerspective(const Raw &src, Raw &dst, 
@@ -318,85 +406,6 @@ void test3(string name, const vector<double>& HomogMat) {
 	Raw2Img::raw2bmp("WarpPers3.bmp", dst, dstW, dstH, dstBits);
 }
 
-// 比例混合
-static void AlphaBlend(basic_ImgData& matchImg, 
-	const basic_ImgData& imgL, const basic_ImgData& imgR) {
-	// R 圖先補上去
-	matchImg=imgR;
-	// 比例混合
-	int i, j, start, end;
-#pragma omp parallel for private(i, j, start, end)
-	for(j = 0; j < imgL.height; j++) {
-		start = imgL.width;
-		end = imgL.width;
-		for(i = 0; i <= (imgL.width-1); i++) {
-			if( (imgR.raw_img[j*imgR.width*3 + i*3+0] == 0 and 
-				imgR.raw_img[j*imgR.width*3 + i*3+1] == 0 and
-				imgR.raw_img[j*imgR.width*3 + i*3+2] == 0)
-				)
-			{
-				// 這裡要補原圖 L 的.
-				matchImg.raw_img[j*matchImg.width*3 + i*3+0] = 
-					imgL.raw_img[j*imgL.width*3 + i*3+0];
-				matchImg.raw_img[j*matchImg.width*3 + i*3+1] = 
-					imgL.raw_img[j*imgL.width*3 + i*3+1];
-				matchImg.raw_img[j*matchImg.width*3 + i*3+2] = 
-					imgL.raw_img[j*imgL.width*3 + i*3+2];
-			} else {
-				if(imgL.raw_img[j*imgL.width*3 + i*3+0] != 0 or
-					imgL.raw_img[j*imgL.width*3 + i*3+1] != 0 or
-					imgL.raw_img[j*imgL.width*3 + i*3+2] != 0)
-				{
-					// 這裡是重疊處.
-					if(start==end) {
-						start=i; // 紀錄起頭
-					}
-					if(start<end) {
-						float len = end-start;
-						float ratioR = (i-start)/len;
-						float ratioL = 1.0 - ratioR;
-						matchImg.raw_img[j*matchImg.width*3 + i*3+0] = //100;
-							imgL.raw_img[j*imgL.width*3 + i*3+0]*ratioL + 
-							imgR.raw_img[j*imgR.width*3 + i*3+0]*ratioR;
-						matchImg.raw_img[j*matchImg.width*3 + i*3+1] = //0;
-							imgL.raw_img[j*imgL.width*3 + i*3+1]*ratioL + 
-							imgR.raw_img[j*imgR.width*3 + i*3+1]*ratioR;
-						matchImg.raw_img[j*matchImg.width*3 + i*3+2] = //0;
-							imgL.raw_img[j*imgL.width*3 + i*3+2]*ratioL + 
-							imgR.raw_img[j*imgR.width*3 + i*3+2]*ratioR;
-					}
-				}
-			}
-		}
-	}
-}
 
-// 透視轉換縫合範例
-void test_WarpPers_Stitch() {
-	Timer t1;
-	// 透視矩陣
-	const vector<double> HomogMat{
-		0.708484   ,  0.00428145 , 245.901,
-		-0.103356   ,  0.888676   , 31.6815,
-		-0.000390072, -1.61619e-05, 1
-	};
 
-	// 讀取影像
-	basic_ImgData img1;
-	Raw2Img::read_bmp(img1.raw_img, "sc02.bmp", &img1.width, &img1.height, &img1.bits);
-	basic_ImgData img2;
-	Raw2Img::read_bmp(img2.raw_img, "sc03.bmp", &img2.width, &img2.height, &img2.bits);
 
-	// 透視投影
-	basic_ImgData warpImg;
-	t1.start();
-	WarpPerspective(img2, warpImg, HomogMat, 0);
-	t1.print(" WarpPerspective");
-
-	// 縫合影像
-	t1.start();
-	basic_ImgData matchImg;
-	AlphaBlend(matchImg, img1, warpImg);
-	t1.print(" WarpPers_Stitch");
-	Raw2Img::raw2bmp("WarpPers_AlphaBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
-}

@@ -1,3 +1,9 @@
+/*****************************************************************
+Name :
+Date : 2018/03/15
+By   : CharlotteHonG
+Final: 2018/03/21
+*****************************************************************/
 // http://blog.csdn.net/weixinhum/article/details/50611750
 
 #include <iostream>
@@ -7,41 +13,39 @@
 using namespace std;
 
 #include "Raw2Img.hpp"
-#include "imagedata.hpp"
 #include "WarpCyli.hpp"
 
 #define M_PI 3.14159265358979323846
 
 // 線性取值
-template<typename T=double>
-static T atBilinear_rgb(const vector<unsigned char>& img, 
-	size_t width, T y, T x, size_t rgb)
+inline static 
+double atBilinear_rgb(const vector<unsigned char>& img, 
+	size_t width, double y, double x, size_t rgb)
 {
 	// 獲取鄰點(不能用 1+)
-	T x0 = floor(x);
-	T x1 = ceil(x);
-	T y0 = floor(y);
-	T y1 = ceil(y);
+	double x0 = floor(x);
+	double x1 = ceil(x);
+	double y0 = floor(y);
+	double y1 = ceil(y);
 	// 獲取比例(只能用 1-)
-	T dx1 = x - x0;
-	T dx2 = 1 - dx1;
-	T dy1 = y - y0;
-	T dy2 = 1 - dy1;
+	double dx1 = x - x0;
+	double dx2 = 1 - dx1;
+	double dy1 = y - y0;
+	double dy2 = 1 - dy1;
 	// 獲取點
-	const T A = img[(y0*width + x0)*3 +rgb];
-	const T B = img[(y0*width + x1)*3 +rgb];
-	const T C = img[(y1*width + x0)*3 +rgb];
-	const T D = img[(y1*width + x1)*3 +rgb];
+	const double&& A = (double)img[(y0*width+x0)*3 +rgb];
+	const double&& B = (double)img[(y0*width+x1)*3 +rgb];
+	const double&& C = (double)img[(y1*width+x0)*3 +rgb];
+	const double&& D = (double)img[(y1*width+x1)*3 +rgb];
 	// 乘出比例(要交叉)
-	T X = 0;
-	X += A*dx2*dy2;
-	X += B*dx1*dy2;
-	X += C*dx2*dy1;
-	X += D*dx1*dy1;
+	double AB = A*dx2 + B*dx1;
+	double CD = C*dx2 + D*dx1;
+	double X = AB*dy2 + CD*dy1;
 	return X;
 }
 // 快速 線性插值 (不做任何檢查可能會超出邊界)
-static void fast_Bilinear_rgb(unsigned char* p, 
+inline static 
+void fast_Bilinear_rgb(unsigned char* p, 
 	const basic_ImgData& src, double y, double x)
 {
 	// 起點
@@ -54,6 +58,7 @@ static void fast_Bilinear_rgb(unsigned char* p,
 	float b_y = 1.f - t_y;
 	int srcW = src.width;
 	int srcH = src.height;
+
 	// 計算RGB
 	float R = 0.f, G = 0.f, B = 0.f;
 	R = (float)src.raw_img[((_y)* srcW + (_x)) * 3 + 0] * (r_x * b_y);
@@ -76,6 +81,62 @@ static void fast_Bilinear_rgb(unsigned char* p,
 	*(p+1) = (unsigned char) G;
 	*(p+2) = (unsigned char) B;
 }
+// 比例混合
+inline static 
+void AlphaBlend(basic_ImgData& matchImg, 
+	const basic_ImgData& imgL, const basic_ImgData& imgR) {
+	// R 圖先補上去
+	matchImg=imgR;
+	// 比例混合
+	int i, j, start, end;
+#pragma omp parallel for private(i, j, start, end)
+	for(j = 0; j < imgL.height; j++) {
+		start = imgL.width;
+		end = imgL.width;
+		for(i = 0; i <= (imgL.width-1); i++) {
+			if( (imgR.raw_img[j*imgR.width*3 + i*3+0] == 0 and 
+				imgR.raw_img[j*imgR.width*3 + i*3+1] == 0 and
+				imgR.raw_img[j*imgR.width*3 + i*3+2] == 0)
+				)
+			{
+				// 這裡要補原圖 L 的.
+				matchImg.raw_img[j*matchImg.width*3 + i*3+0] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+0];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+1] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+1];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+2] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+2];
+			} else {
+				if(imgL.raw_img[j*imgL.width*3 + i*3+0] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+1] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+2] != 0)
+				{
+					// 這裡是重疊處.
+					if(start==end) {
+						start=i; // 紀錄起頭
+					}
+					if(start<end) {
+						float len = end-start;
+						float ratioR = (i-start)/len;
+						float ratioL = 1.0 - ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+0] = //100;
+							imgL.raw_img[j*imgL.width*3 + i*3+0]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+0]*ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+1] = //0;
+							imgL.raw_img[j*imgL.width*3 + i*3+1]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+1]*ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+2] = //0;
+							imgL.raw_img[j*imgL.width*3 + i*3+2]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+2]*ratioR;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
 
 // 圓柱投影座標反轉換
 inline static  void WarpCylindrical_CoorTranfer_Inve(double R,
@@ -87,7 +148,6 @@ inline static  void WarpCylindrical_CoorTranfer_Inve(double R,
 	x = (x - width *.5)*k + width *.5;
 	y = (y - height*.5)*k + height*.5;
 }
-
 // 圓柱投影 basic_ImgData
 void WarpCylindrical(basic_ImgData &dst, const basic_ImgData &src, 
 	double R ,int mx, int my, double edge)
@@ -116,60 +176,6 @@ void WarpCylindrical(basic_ImgData &dst, const basic_ImgData &src,
 		}
 	}
 }
-
-// 比例混合
-static void AlphaBlend(basic_ImgData& matchImg, 
-	const basic_ImgData& imgL, const basic_ImgData& imgR) {
-	// R 圖先補上去
-	matchImg=imgR;
-	// 比例混合
-	int i, j, start, end;
-#pragma omp parallel for private(i, j, start, end)
-	for(j = 0; j < imgL.height; j++) {
-		start = imgL.width;
-		end = imgL.width;
-		for(i = 0; i <= (imgL.width-1); i++) {
-			if( (imgR.raw_img[j*imgR.width*3 + i*3+0] == 0 and 
-				 imgR.raw_img[j*imgR.width*3 + i*3+1] == 0 and
-				 imgR.raw_img[j*imgR.width*3 + i*3+2] == 0)
-			  )
-			{
-				// 這裡要補原圖 L 的.
-				matchImg.raw_img[j*matchImg.width*3 + i*3+0] = 
-					imgL.raw_img[j*imgL.width*3 + i*3+0];
-				matchImg.raw_img[j*matchImg.width*3 + i*3+1] = 
-					imgL.raw_img[j*imgL.width*3 + i*3+1];
-				matchImg.raw_img[j*matchImg.width*3 + i*3+2] = 
-					imgL.raw_img[j*imgL.width*3 + i*3+2];
-			} else {
-				if(imgL.raw_img[j*imgL.width*3 + i*3+0] != 0 or
-				   imgL.raw_img[j*imgL.width*3 + i*3+1] != 0 or
-				   imgL.raw_img[j*imgL.width*3 + i*3+2] != 0)
-				{
-					// 這裡是重疊處.
-					if(start==end) {
-						start=i; // 紀錄起頭
-					}
-					if(start<end) {
-						float len = end-start;
-						float ratioR = (i-start)/len;
-						float ratioL = 1.0 - ratioR;
-						matchImg.raw_img[j*matchImg.width*3 + i*3+0] = //100;
-							imgL.raw_img[j*imgL.width*3 + i*3+0]*ratioL + 
-							imgR.raw_img[j*imgR.width*3 + i*3+0]*ratioR;
-						matchImg.raw_img[j*matchImg.width*3 + i*3+1] = //0;
-							imgL.raw_img[j*imgL.width*3 + i*3+1]*ratioL + 
-							imgR.raw_img[j*imgR.width*3 + i*3+1]*ratioR;
-						matchImg.raw_img[j*matchImg.width*3 + i*3+2] = //0;
-							imgL.raw_img[j*imgL.width*3 + i*3+2]*ratioL + 
-							imgR.raw_img[j*imgR.width*3 + i*3+2]*ratioR;
-					}
-				}
-			}
-		}
-	}
-}
-
 // 圓柱投影縫合範例
 void test_WarpCyli_AlphaBlend()
 {
