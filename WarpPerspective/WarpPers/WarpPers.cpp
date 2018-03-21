@@ -15,12 +15,6 @@ using namespace std;
 #include "WarpPers.hpp"
 
 
-
-
-
-
-
-
 // 輸入 dst 座標, 反轉 scr 輸出.
 static void WarpPerspective_CoorTranfer_Inve(const vector<double>& HomogMat, double& x, double& y) {
 	const double* H = HomogMat.data();
@@ -52,6 +46,7 @@ static void WarpPerspective_CoorTranfer(const vector<double>& HomogMat, double& 
 	//x=round(x);
 	//y=round(y);
 }
+
 // 透視轉換角點 輸入(xy*4) 輸出(dx, dy, minx, miny, maxx, maxy)
 static vector<double> WarpPerspective_Corner(
 	const vector<double>& HomogMat, size_t srcW, size_t srcH)
@@ -101,6 +96,7 @@ static vector<double> WarpPerspective_Corner(
 
 	return cn;
 }
+
 // 圖像透視轉換 ImgRaw_basic 物件
 void WarpPerspective(const basic_ImgData &src, basic_ImgData &dst, 
 	const vector<double> &H, bool clip=0)
@@ -141,6 +137,7 @@ void WarpPerspective(const basic_ImgData &src, basic_ImgData &dst,
 		}
 	}
 }
+
 void test1(string name, const vector<double>& HomogMat) {
 	Timer t1;
 
@@ -181,117 +178,3 @@ void test_WarpPers_Stitch() {
 	t1.print(" WarpPers_Stitch");
 	Raw2Img::raw2bmp("WarpPers_AlphaBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
 }
-
-
-
-
-
-
-// 圖像透視轉換 Raw 物件
-/*void WarpPerspective(const Raw &src, Raw &dst, 
-	const vector<double> &H, bool clip=0)
-{
-
-	int srcW = src.getCol();
-	int srcH = src.getRow();
-	// 獲得轉換後最大邊點
-	vector<double> cn = WarpPerspective_Corner(H, srcW, srcH);
-	// 起點位置
-	int miny=0, minx=0;
-	if(clip==1) {miny=-cn[3], minx=-cn[2];}
-	// 終點位置
-	int dstW = cn[0]+cn[2]+minx;
-	int dstH = cn[1]+cn[3]+miny;
-	
-	dst.resize(dstW, dstH);
-	// 透視投影
-	int j, i;
-	double x, y;
-#pragma omp parallel for private(i, j, x, y)
-	for (j = -miny; j < dstH-miny; ++j) {
-		for (i = -minx; i < dstW-minx; ++i){
-			x = i, y = j;
-			WarpCylindrical_CoorTranfer_Inve(H, x, y);
-			if ((x <= (double)srcW-1.0 && x >= 0.0) and
-				(y <= (double)srcH-1.0 && y >= 0.0))
-			{
-				dst.RGB[((j+miny)*dstW + (i+minx))*3 + 0] = atBilinear_rgb(src.RGB, srcW, y, x, 0);
-				dst.RGB[((j+miny)*dstW + (i+minx))*3 + 1] = atBilinear_rgb(src.RGB, srcW, y, x, 1);
-				dst.RGB[((j+miny)*dstW + (i+minx))*3 + 2] = atBilinear_rgb(src.RGB, srcW, y, x, 2);
-
-			}
-		}
-	}
-}
-void test2(string name, const vector<double>& HomogMat) {
-	Timer t1;
-
-	vector<unsigned char> raw_img;
-	uint32_t weidth, heigh;
-	uint16_t bits;
-	Raw2Img::read_bmp(raw_img, name, &weidth, &heigh, &bits);
-
-	Raw src(weidth, heigh), dst;
-	src.RGB=raw_img;
-
-	t1.start();
-	WarpPerspective(src, dst, HomogMat, 1);
-	t1.print(" WarpPerspective");
-	Raw2Img::raw2bmp("WarpPers2.bmp", dst.RGB, dst.getCol(), dst.getRow());
-}*/
-
-// 圖像透視轉換 non 物件
-void WarpPerspective(
-	const vector<unsigned char> &src, const uint32_t srcW, const uint32_t srcH,
-	vector<unsigned char> &dst, uint32_t& dstW, uint32_t& dstH,
-	const vector<double> &H, bool clip=0)
-{
-	// 獲得轉換後最大邊點
-	vector<double> cn = WarpPerspective_Corner(H, srcW, srcH);
-	// 起點位置
-	int miny=0, minx=0;
-	if(clip==1) { miny=-cn[3], minx=-cn[2]; }
-	// 終點位置
-	dstW = cn[0]+cn[2]+minx;
-	dstH = cn[1]+cn[3]+miny;
-	dst.resize(dstW*dstH*3);
-	// 透視投影
-	int j, i;
-	double x, y;
-#pragma omp parallel for private(i, j, x, y)
-	for (j = -miny; j < dstH-miny; ++j) {
-		for (i = -minx; i < dstW-minx; ++i){
-			x = i, y = j;
-			WarpPerspective_CoorTranfer_Inve(H, x, y);
-			if ((x <= (double)srcW-1.0 && x >= 0.0) and
-				(y <= (double)srcH-1.0 && y >= 0.0))
-			{
-				dst[((j+miny)*dstW + (i+minx))*3 + 0] = atBilinear_rgb(src, srcW, y, x, 0);
-				dst[((j+miny)*dstW + (i+minx))*3 + 1] = atBilinear_rgb(src, srcW, y, x, 1);
-				dst[((j+miny)*dstW + (i+minx))*3 + 2] = atBilinear_rgb(src, srcW, y, x, 2);
-
-			}
-		}
-	}
-}
-void test3(string name, const vector<double>& HomogMat) {
-	Timer t1;
-
-	vector<unsigned char> src;
-	uint32_t srcW, srcH;
-	uint16_t srcBits;
-	Raw2Img::read_bmp(src, name, &srcW, &srcH, &srcBits);
-
-	vector<unsigned char> dst;
-	uint32_t dstW, dstH;
-	uint16_t dstBits=srcBits;
-
-	t1.start();
-	WarpPerspective(src, srcW, srcH, dst, dstW, dstH, HomogMat, 1);
-	t1.print(" WarpPerspective");
-	Raw2Img::raw2bmp("WarpPers3.bmp", dst, dstW, dstH, dstBits);
-}
-
-
-
-
