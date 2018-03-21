@@ -32,38 +32,10 @@ int main(int argc, char const *argv[]) {
 	//test3("kanna.bmp", HomogMat);
 
 	/* 透視投影實現縫合 */
-	//test_WarpPers_Stitch();
+	test_WarpPers_Stitch();
 
-	/* 圓柱投影 */
-	// 讀取影像
-	basic_ImgData img1;
-	Raw2Img::read_bmp(img1.raw_img, "sc02.bmp", &img1.width, &img1.height, &img1.bits);
-	basic_ImgData img2, dst2, zero;
-	Raw2Img::read_bmp(img2.raw_img, "sc03.bmp", &img2.width, &img2.height, &img2.bits);
-
-	string name = "sc02.bmp";
-	vector<unsigned char> raw_img;
-	uint32_t weidth, heigh;
-	uint16_t bits;
-	Raw2Img::read_bmp(raw_img, name, &weidth, &heigh, &bits);
-
-	Raw src(weidth, heigh), dst;
-	src.RGB=raw_img;
-
-
-	t1.start();
-//	DealWithImgData(dst, src, ft);
-	WarpCylindrical(dst2, img1, ft, 0, 0, 0.25);
-	Raw2Img::raw2bmp("WarpCyli1.bmp", dst2.raw_img, dst2.width, dst2.height);
-
-	WarpCylindrical(dst2, img2, ft, Ax, Ay, 0.25);
-	t1.print("DealWithImgData");
-
-	//Raw2Img::raw2bmp("WarpCyli.bmp", dst.RGB, dst.getCol(), dst.getRow());
-	Raw2Img::raw2bmp("WarpCyli2.bmp", dst2.raw_img, dst2.width, dst2.height);
-
-
-
+	/* 圓柱投影實現縫合 */
+	test_WarpCyli_AlphaBlend();
 	return 0;
 }
 //================================================================
