@@ -50,6 +50,9 @@
     <ClInclude Include="WarpCyli\WarpCyli.hpp">
       <Filter>來源檔案\WarpCylindrical</Filter>
     </ClInclude>
+    <ClInclude Include="Sharelib.hpp">
+      <Filter>標頭檔</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md">
