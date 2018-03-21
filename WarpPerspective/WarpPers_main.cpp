@@ -24,8 +24,7 @@ int main(int argc, char const *argv[]) {
 		-0.103356   ,  0.888676   , 31.6815,
 		-0.000390072, -1.61619e-05, 1
 	};
-	
-	double ft = 672.673;
+	double ft = 672.673, Ax=533, Ay=596;
 
 	/* ³zµø§ë¼v */
 	//test1("sc03.bmp", HomogMat);
@@ -53,7 +52,7 @@ int main(int argc, char const *argv[]) {
 
 
 	t1.start();
-	dst=DealWithImgData(src,src.getCol(), src.getRow(), ft);
+	DealWithImgData(dst, src, ft);
 	t1.print("DealWithImgData");
 
 	Raw2Img::raw2bmp("WarpCyli.bmp", dst.RGB, dst.getCol(), dst.getRow());

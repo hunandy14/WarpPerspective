@@ -81,14 +81,12 @@ static void Bilinear_rgb(unsigned char* p, const vector<unsigned char>& img,
 	*(p+rgb) = (unsigned char)(A*dx2*dy2 + B*dx1*dy2 + C*dx2*dy1 + D*dx1*dy1);
 }
 
-
-// bilinear補點
 struct Color {
 	unsigned char R;
 	unsigned char G;
 	unsigned char B;
 };
-
+// bilinear補點
 static Color bilinear(const Raw &src, float _x, float _y)
 {
 	Color color;
@@ -141,30 +139,32 @@ inline static void WarpPerspective_CoorTranfer_Inve(
 	double& x, double& y)
 {
 	double r2 = (x - width*.5);
-	double k = R / sqrt(R*R + r2*r2);
-	x = (x - width *.5)/k + width *.5;
-	y = (y - height*.5)/k + height*.5;
+	double k = sqrt(R*R + r2*r2) / R;
+	x = (x - width *.5)*k + width *.5;
+	y = (y - height*.5)*k + height*.5;
 }
 
-// 圓柱投影
-Raw DealWithImgData(Raw &srcdata, int width, int height, double R)
+// 圓柱投影 basic_ImgData
+void DealWithImgData(Raw &dst, const Raw &src, double R)
 {
-	Raw drcdata(width, height * 2);
+	int width = src.getCol();
+	int height = src.getRow();
+	dst.resize(width, height * 2);
 	
 	int j, i;
 	double* k_num = new double[width];
-
+	double Rr = 1.0/R;
 	// 圓柱投影
 #pragma omp parallel for private(i, j)
 	for (j = -(height / 2); j < (height * 3 / 2); j++){
-		unsigned char* drcdata_RGB = &drcdata.RGB[(j + (height / 2)) * width * 3];
+		unsigned char* drcdata_RGB = &dst.RGB[(j + (height / 2)) * width * 3];
 		for (i = 0; i < width; i++){
 			double x = i, y = j;
 			WarpPerspective_CoorTranfer_Inve(R, width, height, x, y);
 
 			if (x >= 0 && y >= 0 && x < width - 1 && y < height - 1)
 			{
-				Color color = bilinear(srcdata, x, y);
+				Color color = bilinear(src, x, y);
 				drcdata_RGB[i * 3 + 0] = color.R;
 				drcdata_RGB[i * 3 + 1] = color.G;
 				drcdata_RGB[i * 3 + 2] = color.B;
@@ -174,7 +174,6 @@ Raw DealWithImgData(Raw &srcdata, int width, int height, double R)
 			}
 		}
 	}
-	return drcdata;
 }
 
 void warping(const vector<Raw> &inputArrays, float FL2, 
