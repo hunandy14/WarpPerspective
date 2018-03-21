@@ -10,9 +10,11 @@ Final: 2018/03/16
 #include <timer.hpp>
 using namespace std;
 
-
+#include "Raw2Img.hpp"
 #include "Sharelib.hpp"
+
 #include "WarpPers.hpp"
+
 
 
 // 輸入 dst 座標, 反轉 scr 輸出.
@@ -107,7 +109,7 @@ void WarpPerspective(const basic_ImgData &src, basic_ImgData &dst,
 	vector<double> cn = WarpPerspective_Corner(H, srcW, srcH);
 	// 起點位置
 	int miny=0, minx=0;
-	if(clip==1) { miny=-cn[3], minx=-cn[2]; }
+	if(clip==1) { miny = (int)-cn[3], minx = (int)-cn[2]; }
 	// 終點位置
 	int dstW = cn[0]+cn[2]+minx;
 	int dstH = cn[1]+cn[3]+miny;

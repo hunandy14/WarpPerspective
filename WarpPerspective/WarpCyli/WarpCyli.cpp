@@ -12,10 +12,12 @@ Final: 2018/03/21
 #include <timer.hpp>
 using namespace std;
 
+#include "Raw2Img.hpp"
 #include "Sharelib.hpp"
+
 #include "WarpCyli.hpp"
 
-#define M_PI 3.14159265358979323846
+
 
 // 圓柱投影座標反轉換
 inline static  void WarpCylindrical_CoorTranfer_Inve(double R,
