@@ -25,6 +25,9 @@
     <Filter Include="來源檔案\lib">
       <UniqueIdentifier>{83d2b23e-e466-4e2e-9afd-b7613c9c1801}</UniqueIdentifier>
     </Filter>
+    <Filter Include="來源檔案\WarpScale">
+      <UniqueIdentifier>{41e24950-347f-41c6-8989-1e3cc5641d5a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raw2Img\Raw2img.cpp">
@@ -38,6 +41,9 @@
     </ClCompile>
     <ClCompile Include="WarpCyli\WarpCyli.cpp">
       <Filter>來源檔案\WarpCylindrical</Filter>
+    </ClCompile>
+    <ClCompile Include="WarpScale\WarpScale.cpp">
+      <Filter>來源檔案\WarpScale</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -55,6 +61,9 @@
     </ClInclude>
     <ClInclude Include="lib\Sharelib.hpp">
       <Filter>來源檔案\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="WarpScale\WarpScale.hpp">
+      <Filter>來源檔案\WarpScale</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

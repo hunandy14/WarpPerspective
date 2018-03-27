@@ -13,6 +13,8 @@ using namespace std;
 
 #include "WarpPers.hpp"
 #include "WarpCyli.hpp"
+#include "WarpScale.hpp"
+
 
 //================================================================
 int main(int argc, char const *argv[]) {
@@ -23,6 +25,9 @@ int main(int argc, char const *argv[]) {
 		-0.000390072, -1.61619e-05, 1
 	};
 	double ft = 672.673, Ax=752-533, Ay=500-496;
+
+	/* 放大縮小 */
+	test_WarpScale();
 
 	/* 透視投影實現縫合 */
 	test_WarpPers_Stitch();
