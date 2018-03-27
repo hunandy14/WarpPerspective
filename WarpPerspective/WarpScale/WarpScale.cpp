@@ -51,7 +51,7 @@ void test_WarpScale() {
 	Raw2Img::read_bmp(img1.raw_img, "sc02.bmp", &img1.width, &img1.height, &img1.bits);
 	
 	t1.start();
-	WarpScale(img1, img2, 2);
+	WarpScale(img1, img2, 0.5);
 	t1.print(" WarpScale");
 
 	Raw2Img::raw2bmp("WarpScale.bmp", img2.raw_img, img2.width, img2.height, img2.bits);

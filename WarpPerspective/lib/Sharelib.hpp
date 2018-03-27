@@ -28,21 +28,20 @@ inline static void fast_Bilinear_rgb(unsigned char* p,
 
 	// ­pºâRGB
 	double R , G, B;
-	R = (double)src.raw_img[((_y)* srcW + (_x)) * 3 + 0] * (r_x * b_y);
-	G = (double)src.raw_img[((_y)* srcW + (_x)) * 3 + 1] * (r_x * b_y);
-	B = (double)src.raw_img[((_y)* srcW + (_x)) * 3 + 2] * (r_x * b_y);
-
-	R += (double)src.raw_img[((_y)* srcW + (_x + 1)) * 3 + 0] * (l_x * b_y);
-	G += (double)src.raw_img[((_y)* srcW + (_x + 1)) * 3 + 1] * (l_x * b_y);
-	B += (double)src.raw_img[((_y)* srcW + (_x + 1)) * 3 + 2] * (l_x * b_y);
-
-	R += (double)src.raw_img[((_y + 1) * srcW + (_x)) * 3 + 0] * (r_x * t_y);
-	G += (double)src.raw_img[((_y + 1) * srcW + (_x)) * 3 + 1] * (r_x * t_y);
-	B += (double)src.raw_img[((_y + 1) * srcW + (_x)) * 3 + 2] * (r_x * t_y);
-
-	R += (double)src.raw_img[((_y + 1) * srcW + (_x + 1)) * 3 + 0] * (l_x * t_y);
-	G += (double)src.raw_img[((_y + 1) * srcW + (_x + 1)) * 3 + 1] * (l_x * t_y);
-	B += (double)src.raw_img[((_y + 1) * srcW + (_x + 1)) * 3 + 2] * (l_x * t_y);
+	int x2 = (_x+1) > src.width -1? src.width -1: _x+1;
+	int y2 = (_y+1) > src.height-1? src.height-1: _y+1;
+	R  = (double)src.raw_img[(_y * srcW + _x) *3 + 0] * (r_x * b_y);
+	G  = (double)src.raw_img[(_y * srcW + _x) *3 + 1] * (r_x * b_y);
+	B  = (double)src.raw_img[(_y * srcW + _x) *3 + 2] * (r_x * b_y);
+	R += (double)src.raw_img[(_y * srcW + x2) *3 + 0] * (l_x * b_y);
+	G += (double)src.raw_img[(_y * srcW + x2) *3 + 1] * (l_x * b_y);
+	B += (double)src.raw_img[(_y * srcW + x2) *3 + 2] * (l_x * b_y);
+	R += (double)src.raw_img[(y2 * srcW + _x) *3 + 0] * (r_x * t_y);
+	G += (double)src.raw_img[(y2 * srcW + _x) *3 + 1] * (r_x * t_y);
+	B += (double)src.raw_img[(y2 * srcW + _x) *3 + 2] * (r_x * t_y);
+	R += (double)src.raw_img[(y2 * srcW + x2) *3 + 0] * (l_x * t_y);
+	G += (double)src.raw_img[(y2 * srcW + x2) *3 + 1] * (l_x * t_y);
+	B += (double)src.raw_img[(y2 * srcW + x2) *3 + 2] * (l_x * t_y);
 
 	*(p+0) = (unsigned char) R;
 	*(p+1) = (unsigned char) G;
