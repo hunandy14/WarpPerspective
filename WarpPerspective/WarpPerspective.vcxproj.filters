@@ -31,6 +31,9 @@
     <Filter Include="來源檔案\GauBlur">
       <UniqueIdentifier>{ec8ebf39-fc2a-48ec-a159-0adbc08f8e56}</UniqueIdentifier>
     </Filter>
+    <Filter Include="來源檔案\Pyramid">
+      <UniqueIdentifier>{12eb4cdf-63a5-4aa7-90d4-d24bc759c53b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raw2Img\Raw2img.cpp">
@@ -50,6 +53,9 @@
     </ClCompile>
     <ClCompile Include="GauBlur\GauBlur.cpp">
       <Filter>來源檔案\GauBlur</Filter>
+    </ClCompile>
+    <ClCompile Include="Pyramid\Pyramid.cpp">
+      <Filter>來源檔案\Pyramid</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -73,6 +79,9 @@
     </ClInclude>
     <ClInclude Include="GauBlur\GauBlur.hpp">
       <Filter>來源檔案\GauBlur</Filter>
+    </ClInclude>
+    <ClInclude Include="Pyramid\Pyramid.hpp">
+      <Filter>來源檔案\Pyramid</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

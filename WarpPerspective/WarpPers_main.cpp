@@ -15,7 +15,7 @@ using namespace std;
 #include "WarpCyli.hpp"
 #include "WarpScale.hpp"
 #include "GauBlur.hpp"
-
+#include "Pyramid.hpp"
 
 //================================================================
 int main(int argc, char const *argv[]) {
@@ -37,7 +37,10 @@ int main(int argc, char const *argv[]) {
 	//test_WarpCyli_AlphaBlend();
 
 	/* °ª´µ¼Ò½k */
-	test_GauBlur();
+	//test_GauBlur();
+
+	/* ª÷¦r¶ð */
+	test_pyramids();
 	return 0;
 }
 //================================================================

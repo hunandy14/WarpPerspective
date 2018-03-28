@@ -87,12 +87,15 @@ void GauBlur(const basic_ImgData& src, basic_ImgData& dst, float p, size_t mat_l
 
 	// 高斯模糊 X 軸
 	const size_t r = gau_mat.size() / 2;
-	for (unsigned j = 0; j < height; ++j) {
-		for (unsigned i = 0; i < width; ++i) {
+
+	int i, j, k;
+#pragma omp parallel for private(i, j, k)
+	for (j = 0; j < height; ++j) {
+		for (i = 0; i < width; ++i) {
 			double sumR = 0;
 			double sumG = 0;
 			double sumB = 0;
-			for (unsigned k = 0; k < gau_mat.size(); ++k) {
+			for (k = 0; k < gau_mat.size(); ++k) {
 				int idx = i-r + k;
 				// idx超出邊緣處理
 				if (idx < 0) {
@@ -110,12 +113,13 @@ void GauBlur(const basic_ImgData& src, basic_ImgData& dst, float p, size_t mat_l
 		}
 	}
 	// 高斯模糊 Y 軸
-	for (unsigned j = 0; j < height; ++j) {
-		for (unsigned i = 0; i < width; ++i) {
+#pragma omp parallel for private(i, j, k)
+	for (j = 0; j < height; ++j) {
+		for (i = 0; i < width; ++i) {
 			double sumR = 0;
 			double sumG = 0;
 			double sumB = 0;
-			for (unsigned k = 0; k < gau_mat.size(); ++k) {
+			for (k = 0; k < gau_mat.size(); ++k) {
 				int idx = j-r + k;
 				// idx超出邊緣處理
 				if (idx < 0) {

@@ -48,6 +48,29 @@ inline static void fast_Bilinear_rgb(unsigned char* p,
 	*(p+2) = (unsigned char) B;
 }
 
+// 快速補值
+inline static void fast_NearestNeighbor_rgb(unsigned char* p,
+	const basic_ImgData& src, double y, double x) 
+{
+	// 位置(四捨五入)
+	int _x = (int)(x+0.5);
+	int _y = (int)(y+0.5);
+	int srcW = src.width;
+	int srcH = src.height;
+
+	// 計算RGB
+	double R , G, B;
+	int x2 = (_x+1) > src.width -1? src.width -1: _x+1;
+	int y2 = (_y+1) > src.height-1? src.height-1: _y+1;
+	R  = (double)src.raw_img[(y2 * srcW + x2) *3 + 0];
+	G  = (double)src.raw_img[(y2 * srcW + x2) *3 + 1];
+	B  = (double)src.raw_img[(y2 * srcW + x2) *3 + 2];
+
+	*(p+0) = (unsigned char) R;
+	*(p+1) = (unsigned char) G;
+	*(p+2) = (unsigned char) B;
+}
+
 // 比例混合
 inline static void AlphaBlend(basic_ImgData& matchImg, 
 	const basic_ImgData& imgL, const basic_ImgData& imgR) {
