@@ -82,6 +82,51 @@ void pyraDown(const basic_ImgData &src, basic_ImgData &dst) {
 	GauBlur(temp, dst, 1.6, 4);
 }
 
+void buildPyramids(const basic_ImgData &src, vector<basic_ImgData> &pyr, int octvs=5) {
+	pyr.clear();
+	pyr.resize(octvs);
+	pyr[0]=src;
+	for(int i = 1; i < octvs; i++) {
+		pyraDown(pyr[i-1], pyr[i]);
+	}
+}
+void buildLaplacianPyramids(const basic_ImgData &src, vector<basic_ImgData> &pyr, int octvs=5) {
+	pyr.clear();
+	pyr.resize(octvs);
+	pyr[0]=src;
+
+	for(int i = 1; i < octvs; i++) {
+		basic_ImgData expend;
+		pyraDown(pyr[i-1], pyr[i]);
+		WarpScale(pyr[i], expend, 2.0);
+#pragma omp parallel for
+		for(int k = 0; k < expend.width * expend.height*3; k++) {
+			pyr[i-1].raw_img[k] = (pyr[i-1].raw_img[k] - expend.raw_img[k])+128;
+		}
+	}
+}
+void reLaplacianPyramids(vector<basic_ImgData> &pyr, basic_ImgData &dst, int octvs=5) {
+	int newH = (int)(pyr[0].height);
+	int newW = (int)(pyr[0].width);
+
+	// 初始化 dst
+	dst.raw_img.clear();
+	dst.raw_img.resize(newW * newH * pyr[0].bits/8.0);
+	dst.width  = newW;
+	dst.height = newH;
+	dst.bits   = pyr[0].bits;
+
+	for(int i = octvs-1; i >= 1; i--) {
+		basic_ImgData expend;
+		WarpScale(pyr[i], expend, 2.0);
+		//pyraUp(pyr[i], expend);
+#pragma omp parallel for
+		for(int k = 0; k < expend.width * expend.height*3; k++) {
+			pyr[i-1].raw_img[k] = (pyr[i-1].raw_img[k] + (expend.raw_img[k])-128);
+		}
+	}
+	dst = pyr[0];
+}
 
 void test_pyramids() {
 	Timer t1;
@@ -89,13 +134,20 @@ void test_pyramids() {
 	basic_ImgData img1, img2;
 	Raw2Img::read_bmp(img1.raw_img, "sc02.bmp", &img1.width, &img1.height, &img1.bits);
 
+	// 拉普拉斯金字塔
+	vector<basic_ImgData> lap;
 	t1.start();
-	pyraUp(img1, img2);
-	t1.print(" pyraUp");
-	Raw2Img::raw2bmp("pyraUp.bmp", img2.raw_img, img2.width, img2.height, img2.bits);
+	buildLaplacianPyramids(img1, lap);
+	t1.print(" buildLaplacianPyramids");
+	for(int i = 0; i < lap.size(); i++) {
+		basic_ImgData& img2=lap[i];
+		Raw2Img::raw2bmp("Lap\\Lap"+ to_string(i) +".bmp", img2.raw_img, img2.width, img2.height, img2.bits);
+	}
 
+	// 還原拉普拉斯金字塔
+	basic_ImgData res;
 	t1.start();
-	pyraDown(img1, img2);
-	t1.print(" pyraDown");
-	Raw2Img::raw2bmp("pyraDown.bmp", img2.raw_img, img2.width, img2.height, img2.bits);
+	reLaplacianPyramids(lap, res);
+	t1.print(" rebuildLaplacianPyramids");
+	Raw2Img::raw2bmp("Pyramids.bmp", res.raw_img, res.width, res.height, res.bits);
 }
