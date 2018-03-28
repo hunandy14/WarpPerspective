@@ -14,6 +14,7 @@ using namespace std;
 #include "WarpPers.hpp"
 #include "WarpCyli.hpp"
 #include "WarpScale.hpp"
+#include "GauBlur.hpp"
 
 
 //================================================================
@@ -27,13 +28,16 @@ int main(int argc, char const *argv[]) {
 	double ft = 672.673, Ax=752-533, Ay=500-496;
 
 	/* 放大縮小 */
-	test_WarpScale();
+	//test_WarpScale();
 
 	/* 透視投影實現縫合 */
-	test_WarpPers_Stitch();
+	//test_WarpPers_Stitch();
 
 	/* 圓柱投影實現縫合 */
-	test_WarpCyli_AlphaBlend();
+	//test_WarpCyli_AlphaBlend();
+
+	/* 高斯模糊 */
+	test_GauBlur();
 	return 0;
 }
 //================================================================

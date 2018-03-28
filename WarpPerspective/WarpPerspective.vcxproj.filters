@@ -28,6 +28,9 @@
     <Filter Include="來源檔案\WarpScale">
       <UniqueIdentifier>{41e24950-347f-41c6-8989-1e3cc5641d5a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="來源檔案\GauBlur">
+      <UniqueIdentifier>{ec8ebf39-fc2a-48ec-a159-0adbc08f8e56}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Raw2Img\Raw2img.cpp">
@@ -44,6 +47,9 @@
     </ClCompile>
     <ClCompile Include="WarpScale\WarpScale.cpp">
       <Filter>來源檔案\WarpScale</Filter>
+    </ClCompile>
+    <ClCompile Include="GauBlur\GauBlur.cpp">
+      <Filter>來源檔案\GauBlur</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +70,9 @@
     </ClInclude>
     <ClInclude Include="WarpScale\WarpScale.hpp">
       <Filter>來源檔案\WarpScale</Filter>
+    </ClInclude>
+    <ClInclude Include="GauBlur\GauBlur.hpp">
+      <Filter>來源檔案\GauBlur</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

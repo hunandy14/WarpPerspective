@@ -11,7 +11,7 @@ Final: 2018/03/21
 
 
 
-// 快速 線性插值 (不做任何檢查可能會超出邊界)
+// 快速 線性插值
 inline static void fast_Bilinear_rgb(unsigned char* p, 
 	const basic_ImgData& src, double y, double x)
 {
