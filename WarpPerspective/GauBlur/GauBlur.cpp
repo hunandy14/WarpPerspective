@@ -57,6 +57,23 @@ vector<float> gau_matrix(float p, size_t mat_len) {
 	for (auto&& i : gau_mat) { i /= sum; }
 	return gau_mat;
 }
+// 高斯2d矩陣
+vector<float> gau_matrix2d(float p, size_t mat_len) {
+	vector<float> gau_mat2d;
+	gau_mat2d.resize(mat_len*mat_len);
+	vector<float> gau_mat1d = gau_matrix(p, mat_len);
+	// 做 X
+	for (size_t j = 0; j < mat_len; j++)
+		for (size_t i = 0; i < mat_len; i++)
+			//gau_mat2d[j*mat_len + i] = gau_mat1d[i];
+	// 做 Y
+	for (size_t j = 0; j < mat_len; j++)
+		for (size_t i = 0; i < mat_len; i++)
+			gau_mat2d[i*mat_len + j] = gau_mat1d[i];
+
+			//gau_mat2d[i*mat_len + j] *= gau_mat1d[i];
+	return gau_mat2d;
+}
 
 // 高斯模糊
 using types=float;
