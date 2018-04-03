@@ -41,6 +41,7 @@ int main(int argc, char const *argv[]) {
 
 	/* ª÷¦r¶ð */
 	test_pyramids();
+	t1.print(" ALL");
 	return 0;
 }
 //================================================================

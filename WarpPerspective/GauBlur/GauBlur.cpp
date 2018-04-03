@@ -79,40 +79,31 @@ vector<float> gau_matrix2d(float p, size_t mat_len) {
 using types=float;
 void GauBlur(const basic_ImgData& src, basic_ImgData& dst, float p, size_t mat_len)
 {
-	/*vector<unsigned char> raw_img = src.raw_img;
-	Raw2Img::raw2gray(raw_img);*/
-
+	Timer t1;
 	size_t width  = src.width;
 	size_t height = src.height;
-
-
 	// 來源不可相同
 	if (&dst == &src) {
 		throw file_same("## Erroe! in and out is same.");
 	}
-	vector<types> gau_mat = gau_matrix(p, mat_len);
 
+	vector<types> gau_mat = gau_matrix(p, mat_len);
 	// 初始化 dst
 	dst.raw_img.resize(width*height * src.bits/8.0);
 	dst.width  = width;
 	dst.height = height;
 	dst.bits   = src.bits;
-
-
 	// 緩存
 	vector<types> img_gauX(width*height*3);
-
 	// 高斯模糊 X 軸
 	const size_t r = gau_mat.size() / 2;
-
-	int i, j, k;
-#pragma omp parallel for private(i, j, k)
-	for (j = 0; j < height; ++j) {
-		for (i = 0; i < width; ++i) {
+#pragma omp parallel for
+	for (int j = 0; j < height; ++j) {
+		for (int i = 0; i < width; ++i) {
 			double sumR = 0;
 			double sumG = 0;
 			double sumB = 0;
-			for (k = 0; k < gau_mat.size(); ++k) {
+			for (int k = 0; k < gau_mat.size(); ++k) {
 				int idx = i-r + k;
 				// idx超出邊緣處理
 				if (idx < 0) {
@@ -130,13 +121,13 @@ void GauBlur(const basic_ImgData& src, basic_ImgData& dst, float p, size_t mat_l
 		}
 	}
 	// 高斯模糊 Y 軸
-#pragma omp parallel for private(i, j, k)
-	for (j = 0; j < height; ++j) {
-		for (i = 0; i < width; ++i) {
+#pragma omp parallel for
+	for (int j = 0; j < height; ++j) {
+		for (int i = 0; i < width; ++i) {
 			double sumR = 0;
 			double sumG = 0;
 			double sumB = 0;
-			for (k = 0; k < gau_mat.size(); ++k) {
+			for (int k = 0; k < gau_mat.size(); ++k) {
 				int idx = j-r + k;
 				// idx超出邊緣處理
 				if (idx < 0) {

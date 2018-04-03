@@ -90,6 +90,39 @@ static vector<float> getGauKer(int x){
 	return kernel;
 }
 
+// 積分模糊
+static void Lowpass(const basic_ImgData& src, basic_ImgData& dst) {
+	int d=5;
+	// 初始化 dst
+	dst.raw_img.resize(src.width * src.height* src.bits/8.0);
+	dst.width  = src.width;
+	dst.height = src.height;
+	dst.bits   = src.bits;
+	int radius = (d-1) *0.5;
+	// 開始跑圖(邊緣扣除半徑)
+#pragma omp parallel for
+	for (int j = 0; j < src.height; j++) {
+		for (int i = 0; i < src.width; i++) {
+			int r_t=0, g_t=0, b_t=0;
+			// 半徑內平均
+			for (int dy = -radius; dy <= radius; dy++) {
+				for (int dx = -radius; dx <= radius; dx++) {
+					int yy = (j+dy)<0? 0:(j+dy);
+					int xx = (i+dx)<0? 0:(i+dx);
+					if (yy > dst.height-1) yy = dst.height-1;
+					if (xx > dst.width-1) xx = dst.width-1;
+					int posi = (yy*src.width + xx)*3;
+					r_t += src.raw_img[posi +0];
+					g_t += src.raw_img[posi +1];
+					b_t += src.raw_img[posi +2];
+				}
+			}
+			dst.raw_img[(j*src.width+i)*3 +0] = r_t /(d*d);
+			dst.raw_img[(j*src.width+i)*3 +1] = g_t /(d*d);
+			dst.raw_img[(j*src.width+i)*3 +2] = b_t /(d*d);
+		}
+	}
+}
 // 圖片縮放
 static void WarpScale(const basic_ImgData &src, basic_ImgData &dst, double Ratio){
 	int newH = (int)((src.height * Ratio) +0.5);
@@ -116,8 +149,11 @@ static void WarpScale(const basic_ImgData &src, basic_ImgData &dst, double Ratio
 			}
 			// 獲取插補值
 			unsigned char* p = &dst.raw_img[(j*newW + i) *3];
-			//fast_NearestNeighbor_rgb(p, src, srcY, srcX);
-			fast_Bilinear_rgb(p, src, srcY, srcX);
+			if (Ratio>1) {
+				fast_Bilinear_rgb(p, src, srcY, srcX);
+			} else {
+				fast_NearestNeighbor_rgb(p, src, srcY, srcX);
+			}
 		}
 	}
 }
@@ -134,10 +170,12 @@ void pyraUp(const basic_ImgData &src, basic_ImgData &dst) {
 	dst.bits   = src.bits;
 
 	basic_ImgData temp;
-	WarpScale(src, temp, 2.0);
+	//WarpScale(src, temp, 2.0);
 	GauBlur(temp, dst, 1.6, 4);
+	Lowpass(temp, dst);
 }
 void pyraDown(const basic_ImgData &src, basic_ImgData &dst) {
+	//Timer t1;
 	int newH = (int)(src.height * 0.5);
 	int newW = (int)(src.width  * 0.5);
 
@@ -151,6 +189,7 @@ void pyraDown(const basic_ImgData &src, basic_ImgData &dst) {
 	basic_ImgData temp;
 	WarpScale(src, temp, 0.5);
 	GauBlur(temp, dst, 1.6, 4);
+	//Lowpass(temp, dst);
 }
 void imgSub(basic_ImgData &src, const basic_ImgData &dst) {
 	int i, j;
@@ -215,17 +254,20 @@ void buildPyramids(const basic_ImgData &src, vector<basic_ImgData> &pyr, int oct
 }
 void buildLaplacianPyramids(const basic_ImgData &src, LapPyr &pyr, int octvs=5) {
 	Timer t1;
+	t1.priSta=0;
 	pyr.clear();
 	pyr.resize(octvs);
 	pyr[0]=src;
 
 	for(int i = 1; i < octvs; i++) {
 		basic_ImgData expend;
-		pyraDown(pyr[i-1], pyr[i]);
-		WarpScale(pyr[i], expend, 2.0);
+		t1.start();
+		pyraDown(pyr[i-1], pyr[i]); // 0.6
+		t1.print("    pyraDown");
+		t1.start();
+		WarpScale(pyr[i], expend, 2.0); // 0.5
+		t1.print("    WarpScale");
 		imgSub(pyr[i-1], expend);
-		//basic_ImgData& dst_out = pyr[i - 1];
-		//Raw2Img::raw2bmp("Lap\\Lap_Test"+ to_string(i) +".bmp", dst_out.raw_img, dst_out.width, dst_out.height, dst_out.bits);
 	}
 }
 void reLaplacianPyramids(LapPyr &pyr, basic_ImgData &dst, int octvs=5) {
@@ -247,7 +289,6 @@ void reLaplacianPyramids(LapPyr &pyr, basic_ImgData &dst, int octvs=5) {
 	}
 	dst = pyr[0];
 }
-
 // 混合拉普拉斯金字塔
 void blendLaplacianPyramids(LapPyr& LS, const LapPyr& LA, const LapPyr& LB) {
 	LS.resize(LA.size());
@@ -257,80 +298,94 @@ void blendLaplacianPyramids(LapPyr& LS, const LapPyr& LA, const LapPyr& LB) {
 	auto gausKernal = getGauKer(LA.back().width);
 
 	// 混合圖片
-	for(int a = 0; a < LS.size(); a++) {
-		int newH = (int)(LA[a].height);
-		int newW = (int)(LA[a].width);
-		int center = (int)(LA[a].width *0.5);
+	for(int idx = 0; idx < LS.size(); idx++) {
+		int newH =   (int)(LA[idx].height);
+		int newW =   (int)(LA[idx].width);
+		int center = (int)(LA[idx].width *0.5);
 
 		// 初始化
 		basic_ImgData dst;
-		dst.raw_img.resize(newW * newH * LA[a].bits);
+		dst.raw_img.resize(newW * newH * LA[idx].bits);
 		dst.width  = newW;
 		dst.height = newH;
-		dst.bits   = LA[a].bits;
+		dst.bits   = LA[idx].bits;
 
-		// 開始跑 LS[a] 圖
-		for(int j = 0; j < newH; j++) {
-			for(int i = 0; i < newW; i++) {
-				for(int c = 0; c < 3; c++) {
-					// 拉普拉斯彩色區 (L*高斯) + (R*(1-高斯))
-					if(a == LS.size()-1) {
-						dst.raw_img[(j * dst.width + i) * 3 + c] = 
-							LA[a].raw_img[(j * LA[a].width + i) * 3 + c] * gausKernal[i] +
-							LB[a].raw_img[(j * LB[a].width + i) * 3 + c] * (1.f - gausKernal[i]);
-						// 拉普拉斯差值區 (左邊就放左邊差值，右邊放右邊差值，正中間放平均)
+		// 開始混合各層
+		int i, j, rgb;
+#pragma omp parallel for private(i, j, rgb)
+		for(j = 0; j < newH; j++) {
+			for(i = 0; i < newW; i++) {
+				for(rgb = 0; rgb < 3; rgb++) {
+					int dstIdx = (j*dst.width + i) * 3;
+					int LAIdx = (j*LA[idx].width+i)*3;
+					int LBIdx = (j*LB[idx].width+i)*3;
+
+					if(idx == LS.size()-1) {
+						// 拉普拉斯彩色區 (L*高斯) + (R*(1-高斯))
+						dst.raw_img[dstIdx +rgb] = 
+							LA[idx].raw_img[LAIdx +rgb] * gausKernal[i] +
+							LB[idx].raw_img[LBIdx +rgb] * (1.f - gausKernal[i]);
 					} else {
+						// 拉普拉斯差值區 (左邊就放左邊差值，右邊放右邊差值，正中間放平均)
 						if(i == center) {
-							dst.raw_img[(j * dst.width + i) * 3 + c] = 
-								(LA[a].raw_img[(j * LA[a].width + i) * 3 + c] + 
-									LB[a].raw_img[(j * LB[a].width + i) * 3 + c]) * 0.5;
-							// 右半部
+							// 正中間
+							dst.raw_img[dstIdx +rgb] = 0.5 *(
+								LA[idx].raw_img[LAIdx +rgb]+
+								LB[idx].raw_img[LBIdx +rgb]);
 						} else if(i > center) {
-							dst.raw_img[(j * dst.width + i) * 3 + c] = 
-								LB[a].raw_img[(j * LB[a].width + i) * 3 + c];
-							// 左半部
+							// 右半部
+							dst.raw_img[dstIdx +rgb] = 
+								LB[idx].raw_img[LBIdx +rgb];
 						} else {
-							dst.raw_img[(j * dst.width + i) * 3 + c] = 
-								LA[a].raw_img[(j * LA[a].width + i) * 3 + c];
+							// 左半部
+							dst.raw_img[dstIdx +rgb] = 
+								LA[idx].raw_img[LAIdx +rgb];
 						}
 					}
 				}
 
 			}
 		}
-		LS[a] = std::move(dst);
+		LS[idx] = std::move(dst);
 	}
+}
+// 混合圖片
+void blendImg(basic_ImgData& dst, const basic_ImgData& src1, const basic_ImgData& src2) {
+	Timer t1;
+	t1.priSta=0;
+	// 拉普拉斯金字塔 AB
+	vector<basic_ImgData> LA, LB;
+	t1.start();
+	buildLaplacianPyramids(src1, LA);
+	t1.print("  buildLapA");
+	t1.start();
+	buildLaplacianPyramids(src2, LB);
+	t1.print("  buildLapB");
+	// 混合金字塔
+	LapPyr LS;
+	t1.start();
+	blendLaplacianPyramids(LS, LA, LB);
+	t1.print("  blendImg");
+	// 還原拉普拉斯金字塔
+	t1.start();
+	reLaplacianPyramids(LS, dst);
+	t1.print("  rebuildLaplacianPyramids");
 }
 
 // 混合圖片
 void test_pyramids() {
 	Timer t1;
-	basic_ImgData src1, src2, dst;
+	// 圖片
+	//string name1="white.bmp", name2="apple.bmp";
+	string name1="LA.bmp", name2="LB.bmp";
 	// 讀取影像
-	//string name1="LA.bmp", name2="LB.bmp";
-	string name1="white.bmp", name2="apple.bmp";
+	basic_ImgData src1, src2, dst;
 	Raw2Img::read_bmp(src1.raw_img, name1, &src1.width, &src1.height, &src1.bits);
 	Raw2Img::read_bmp(src2.raw_img, name2, &src2.width, &src2.height, &src2.bits);
-	
-	// 拉普拉斯金字塔 AB
-	vector<basic_ImgData> LA, LB;
+	// 混合圖片
 	t1.start();
-	buildLaplacianPyramids(src1, LA);
-	t1.print(" buildLapA");
-	t1.start();
-	buildLaplacianPyramids(src2, LB);
-	t1.print(" buildLapB");
-
-	// 混合金字塔
-	LapPyr LS;
-	t1.start();
-	blendLaplacianPyramids(LS, LA, LB);
+	blendImg(dst, src1, src2);
 	t1.print(" blendImg");
-	
-	// 還原拉普拉斯金字塔
-	t1.start();
-	reLaplacianPyramids(LS, dst);
-	t1.print(" rebuildLaplacianPyramids");
+	// 輸出圖片
 	Raw2Img::raw2bmp("_rePyrImg.bmp", dst.raw_img, dst.width, dst.height, dst.bits);
-	
 }
