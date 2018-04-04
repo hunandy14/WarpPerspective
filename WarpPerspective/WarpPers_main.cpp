@@ -35,12 +35,15 @@ int main(int argc, char const *argv[]) {
 
 	/* 圓柱投影實現縫合 */
 	//test_WarpCyli_AlphaBlend();
+	test_WarpCyli_MuitBlend();
 
 	/* 高斯模糊 */
 	//test_GauBlur();
 
-	/* 金字塔 */
-	test_pyramids();
+	/* 金字塔縫合 */
+	//test_pyramids();
+
+
 	t1.print(" ALL");
 	return 0;
 }

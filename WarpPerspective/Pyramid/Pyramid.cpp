@@ -376,8 +376,9 @@ void blendImg(basic_ImgData& dst, const basic_ImgData& src1, const basic_ImgData
 void test_pyramids() {
 	Timer t1;
 	// 圖片
-	//string name1="white.bmp", name2="apple.bmp";
-	string name1="LA.bmp", name2="LB.bmp";
+	// string name1="white.bmp", name2="apple.bmp";
+	// string name1="LA.bmp", name2="LB.bmp";
+	string name1="cut1.bmp", name2="cut2.bmp";
 	// 讀取影像
 	basic_ImgData src1, src2, dst;
 	Raw2Img::read_bmp(src1.raw_img, name1, &src1.width, &src1.height, &src1.bits);
