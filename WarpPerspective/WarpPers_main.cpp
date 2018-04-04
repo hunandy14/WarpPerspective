@@ -25,7 +25,7 @@ int main(int argc, char const *argv[]) {
 		-0.103356   ,  0.888676   , 31.6815,
 		-0.000390072, -1.61619e-05, 1
 	};
-	double ft = 672.673, Ax=752-533, Ay=500-496;
+	double ft = 672.673, Ax=219, Ay=3;
 
 	/* 放大縮小 */
 	//test_WarpScale();
@@ -43,7 +43,7 @@ int main(int argc, char const *argv[]) {
 	/* 金字塔縫合 */
 	//test_pyramids();
 
-
+	
 	t1.print(" ALL");
 	return 0;
 }

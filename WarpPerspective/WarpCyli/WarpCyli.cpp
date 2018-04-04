@@ -178,7 +178,7 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const basic_ImgData &src1, const basi
 // 圓柱投影縫合範例
 void test_WarpCyli_AlphaBlend()
 {
-	double ft = 672.673, Ax=752-533, Ay=500-496;
+	double ft = 672.673, Ax=219, Ay=3;
 
 	Timer t1;
 	// 讀取影像
@@ -206,7 +206,7 @@ void test_WarpCyli_AlphaBlend()
 }
 void test_WarpCyli_MuitBlend()
 {
-	double ft = 672.673, Ax=752-533, Ay=500-496;
+	double ft = 672.673, Ax=219, Ay=3;
 
 	Timer t1;
 	// 讀取影像
