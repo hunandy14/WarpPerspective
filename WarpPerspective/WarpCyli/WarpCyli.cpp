@@ -229,5 +229,5 @@ void test_WarpCyli_MuitBlend()
 	t1.start();
 	WarpCyliMuitBlend(matchImg, dst1, dst2, Ax, Ay);
 	t1.print(" WarpCyliMuitBlend");
-	//Raw2Img::raw2bmp("WarpCyli_AlphaBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height);
+	Raw2Img::raw2bmp("WarpCyliMuitBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height);
 }
