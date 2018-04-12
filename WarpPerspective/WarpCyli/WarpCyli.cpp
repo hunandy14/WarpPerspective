@@ -75,6 +75,7 @@ void WarpCylindrical(basic_ImgData &dst, const basic_ImgData &src,
 // 找到圓柱投影角點
 void WarpCyliCorner(const basic_ImgData &src, vector<int>& corner) {
 	corner.resize(4);
+	// 左上角角點
 	for (int i = 0; i < src.width; i++) {
 		int pix = (int)src.raw_img[(src.height/2*src.width +i)*3 +0];
 		if (i<src.width/2 and pix != 0) {
@@ -87,7 +88,7 @@ void WarpCyliCorner(const basic_ImgData &src, vector<int>& corner) {
 			break;
 		}
 	}
-
+	// 右上角角點
 	for (int i = 0; i < src.height; i++) {
 		int pix = (int)src.raw_img[(i*src.width +corner[0])*3 +0];
 		if (i<src.height/2 and pix != 0) {
@@ -108,19 +109,21 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 	basic_ImgData &src1, const basic_ImgData &src2,
 	int mx, int my) 
 {
+	// 檢測圓柱圖角點
 	vector<int> corner;
 	WarpCyliCorner(src1, corner);
-
+	// 新圖大小
 	int newH=corner[3]-corner[1]-my;
 	int newW=corner[2]-corner[0]+mx;
-
+	// 重疊區大小
+	int lapH=newH;
+	int lapW=corner[2]-corner[0]-mx;
 	// 兩張圖的高度偏差值
 	int myA = my>0? 0:my;
 	int myB = my<0? 0:my;
 
 	// 整張圖
 	resize_basic_ImgData(dst, newW, newH, 24);
-
 	basic_ImgData all=dst;
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW; i++) {
@@ -141,8 +144,8 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 
 	// 重疊區
 	basic_ImgData cut1, cut2;
-	resize_basic_ImgData(cut1, corner[2]-corner[0]-mx, newH, 24);
-	resize_basic_ImgData(cut2, corner[2]-corner[0]-mx, newH, 24);
+	resize_basic_ImgData(cut1, lapW, lapH, 24);
+	resize_basic_ImgData(cut2, lapW, lapH, 24);
 #pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW-mx; i++) {
@@ -185,8 +188,6 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 			// 重疊區
 			else if (i >= mx and i < corner[2]-corner[0]) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
-					//dst.raw_img[(j*dst.width +i) *3+rgb] = blend.raw_img[j*src1.width+i *3+rgb];
-					//cout << "over" << j << ", " << i-mx << endl;
 					dst.raw_img[(j*dst.width +i) *3+rgb] = blend.raw_img[(j*blend.width+(i-mx)) *3+rgb];
 				}
 			}
