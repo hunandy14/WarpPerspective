@@ -104,14 +104,14 @@ void WarpCyliCorner(const basic_ImgData &src, vector<int>& corner) {
 }
 
 
-// 混合兩張圓柱
-void WarpCyliMuitBlend(basic_ImgData &dst, const 
-	basic_ImgData &src1, const basic_ImgData &src2,
-	int mx, int my) 
+
+// 取出重疊區
+void getOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
+	basic_ImgData& cut1, basic_ImgData& cut2, vector<int> corner)
 {
-	// 檢測圓柱圖角點
-	vector<int> corner;
-	WarpCyliCorner(src1, corner);
+	// 偏移量
+	int mx=corner[4];
+	int my=corner[5];
 	// 新圖大小
 	int newH=corner[3]-corner[1]-my;
 	int newW=corner[2]-corner[0]+mx;
@@ -122,28 +122,7 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 	int myA = my>0? 0:my;
 	int myB = my<0? 0:my;
 
-	// 整張圖
-	resize_basic_ImgData(dst, newW, newH, 24);
-	basic_ImgData all=dst;
-	for (int j = 0; j < newH; j++) {
-		for (int i = 0; i < newW; i++) {
-			// 圖1
-			if (i < corner[2]-corner[0]) {
-				for (int  rgb = 0; rgb < 3; rgb++) {
-					all.raw_img[(j*dst.width +i) *3+rgb] = src1.raw_img[(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3+rgb];
-				}
-			}
-			// 圖2
-			if (i >= mx) {
-				for (int  rgb = 0; rgb < 3; rgb++) {
-					all.raw_img[(j*dst.width +i) *3+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
-				}
-			}
-		}
-	}
-
 	// 重疊區
-	basic_ImgData cut1, cut2;
 	resize_basic_ImgData(cut1, lapW, lapH, 24);
 	resize_basic_ImgData(cut2, lapW, lapH, 24);
 #pragma omp parallel for
@@ -165,17 +144,22 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 	}
 	//write_img(cut1, "__cut1.bmp");
 	//write_img(cut2, "__cut2.bmp");
+}
+// 重疊區與兩張原圖合併
+void mergeOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
+	const basic_ImgData &blend, basic_ImgData &dst, vector<int> corner)
+{
+	// 偏移量
+	int mx=corner[4];
+	int my=corner[5];
+	// 新圖大小
+	int newH=corner[3]-corner[1]-my;
+	int newW=corner[2]-corner[0]+mx;
+	// 兩張圖的高度偏差值
+	int myA = my>0? 0:my;
+	int myB = my<0? 0:my;
 
-	// 混合圖片
-	basic_ImgData blend;
-	blendImg(blend, cut1, cut2);
-	write_img(blend, "___lapblend.bmp");
-
-	basic_ImgData blend2;
-	Raw2Img::read_bmp(blend2.raw_img, "___posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
-	//blend = blend2;
-
-	// 輸出圖片
+	// 合併圖片
 #pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW; i++) {
@@ -199,6 +183,64 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 			}
 		}
 	}
+}
+
+// 混合兩張圓柱
+void WarpCyliMuitBlend(basic_ImgData &dst, const 
+	basic_ImgData &src1, const basic_ImgData &src2,
+	int mx, int my) 
+{
+	// 檢測圓柱圖角點(minX, minY, maxX, maxY, mx, my)
+	vector<int> corner;
+	WarpCyliCorner(src1, corner);
+	corner.push_back(mx);
+	corner.push_back(my);
+
+
+
+	// 新圖大小
+	int newH=corner[3]-corner[1]-my;
+	int newW=corner[2]-corner[0]+mx;
+	// 兩張圖的高度偏差值
+	int myA = my>0? 0:my;
+	int myB = my<0? 0:my;
+	// 整張圖
+	resize_basic_ImgData(dst, newW, newH, 24);
+	basic_ImgData all=dst;
+	for (int j = 0; j < newH; j++) {
+		for (int i = 0; i < newW; i++) {
+			// 圖1
+			if (i < corner[2]-corner[0]) {
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					all.raw_img[(j*dst.width +i) *3+rgb] = src1.raw_img[(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3+rgb];
+				}
+			}
+			// 圖2
+			if (i >= mx) {
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					all.raw_img[(j*dst.width +i) *3+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
+				}
+			}
+		}
+	}
+
+
+
+	// 取出重疊區
+	basic_ImgData cut1, cut2;
+	getOverlap(src1, src2, cut1, cut2, corner);
+	// 混合重疊區
+	basic_ImgData blend;
+	blendImg(blend, cut1, cut2);
+	write_img(blend, "___lapblend.bmp");
+
+	// 測試:加入柏松混合圖
+	basic_ImgData blend2;
+	Raw2Img::read_bmp(blend2.raw_img, "___posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
+	//blend = blend2;
+
+	// 合併三張圖片
+	mergeOverlap(src1, src2, blend, dst, corner);
 }
 
 // 圓柱投影縫合範例
