@@ -204,25 +204,44 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 	// 兩張圖的高度偏差值
 	int myA = my>0? 0:my;
 	int myB = my<0? 0:my;
-	// 整張圖
+
+
+
+	// 整張圖(test用)
 	resize_basic_ImgData(dst, newW, newH, 24);
 	basic_ImgData all=dst;
+//#pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW; i++) {
+			int idx=(j*dst.width +i) *3;
+			int src1idx;
+
+
 			// 圖1
-			if (i < corner[2]-corner[0]) {
+			if (i < /*corner[2]-corner[0]*/ newW/2.0) {
+				src1idx=(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3;
 				for (int  rgb = 0; rgb < 3; rgb++) {
-					all.raw_img[(j*dst.width +i) *3+rgb] = src1.raw_img[(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3+rgb];
+					all.raw_img[idx+rgb] = src1.raw_img[src1idx+rgb];
 				}
 			}
-			// 圖2
-			if (i >= mx) {
+			// 向右拉平
+			if (i >= /*mx*/ newW/2.0 ) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
-					all.raw_img[(j*dst.width +i) *3+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
+					//all.raw_img[idx+rgb] = src1.raw_img[src1idx+rgb];
+				}
+			}
+
+
+
+			// 圖2
+			if (i >= /*mx*/ newW/2.0) {
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					all.raw_img[idx+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
 				}
 			}
 		}
 	}
+	write_img(all, "___all.bmp");
 
 
 
@@ -236,7 +255,7 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 
 	// 測試:加入柏松混合圖
 	basic_ImgData blend2;
-	Raw2Img::read_bmp(blend2.raw_img, "___posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
+	Raw2Img::read_bmp(blend2.raw_img, "posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
 	//blend = blend2;
 
 	// 合併三張圖片

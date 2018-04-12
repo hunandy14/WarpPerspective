@@ -376,9 +376,9 @@ void blendImg(basic_ImgData& dst, const basic_ImgData& src1, const basic_ImgData
 void test_pyramids() {
 	Timer t1;
 	// 圖片
-	// string name1="white.bmp", name2="apple.bmp";
-	// string name1="LA.bmp", name2="LB.bmp";
-	string name1="LA2.bmp", name2="LB2.bmp";
+	//string name1="white.bmp", name2="apple.bmp";
+	//string name1="LA.bmp", name2="LB.bmp";
+	string name1="LA2.bmp", name2="LB2'.bmp";
 	// 讀取影像
 	basic_ImgData src1, src2, dst;
 	Raw2Img::read_bmp(src1.raw_img, name1, &src1.width, &src1.height, &src1.bits);
@@ -388,5 +388,5 @@ void test_pyramids() {
 	blendImg(dst, src1, src2);
 	t1.print(" blendImg");
 	// 輸出圖片
-	Raw2Img::raw2bmp("_rePyrImg.bmp", dst.raw_img, dst.width, dst.height, dst.bits);
+	Raw2Img::raw2bmp("LS.bmp", dst.raw_img, dst.width, dst.height, dst.bits);
 }
