@@ -1,4 +1,4 @@
-/*****************************************************************
+ï»¿/*****************************************************************
 Name :
 Date : 2018/03/15
 By   : CharlotteHonG
@@ -23,9 +23,9 @@ using namespace cv;
 
 
 //==================================================================================
-// ¨p¦³¨ç¦¡
+// ç§æœ‰å‡½å¼
 //==================================================================================
-// ­«³] ImgData ¤j¤p
+// é‡è¨­ ImgData å¤§å°
 static void ImgData_resize(basic_ImgData &dst, int newW, int newH, int bits) {
 	dst.raw_img.resize(newW*newH*3);
 	dst.width = newW;
@@ -38,18 +38,139 @@ static void ImgData_resize(const basic_ImgData& src, basic_ImgData &dst) {
 	dst.height = src.height;
 	dst.bits = src.bits;
 };
-// ¿é¥X bmp
+// è¼¸å‡º bmp
 static void ImgData_write(basic_ImgData &dst, string name) {
 	Raw2Img::raw2bmp(name, dst.raw_img, dst.width, dst.height);
 };
-// Åª¨úbmp
+// è®€å–bmp
 static void ImgData_read(basic_ImgData &src, std::string name) {
 	Raw2Img::read_bmp(src.raw_img, name, &src.width, &src.height, &src.bits);
 }
+
+
+
+
+class LaplacianBlending {  
+private:  
+	Mat_<Vec3f> left;  
+	Mat_<Vec3f> right;  
+	Mat_<float> blendMask;  
+
+	vector<Mat_<Vec3f> > leftLapPyr,rightLapPyr,resultLapPyr;//Laplacian Pyramids  
+	Mat leftHighestLevel, rightHighestLevel, resultHighestLevel;  
+	vector<Mat_<Vec3f> > maskGaussianPyramid; //masks are 3-channels for easier multiplication with RGB  
+	int levels;  
+	void buildPyramids() {  
+		buildLaplacianPyramid(left,leftLapPyr,leftHighestLevel);  
+		buildLaplacianPyramid(right,rightLapPyr,rightHighestLevel);  
+		buildGaussianPyramid();  
+	}  
+	void buildGaussianPyramid() {//é‡‘å­—å¡”å…§å®¹çˆ²æ¯ä¸€å±¤çš„æ©æ¨¡  
+		assert(leftLapPyr.size()>0);  
+
+		maskGaussianPyramid.clear();  
+		Mat currentImg;  
+		cvtColor(blendMask, currentImg, CV_GRAY2BGR);//store color img of blend mask into maskGaussianPyramid  
+		maskGaussianPyramid.push_back(currentImg); //0-level  
+
+		currentImg = blendMask;  
+		for (int l=1; l<levels+1; l++) {  
+			Mat _down;  
+			if (leftLapPyr.size() > l)  
+				pyrDown(currentImg, _down, leftLapPyr[l].size());  
+			else  
+				pyrDown(currentImg, _down, leftHighestLevel.size()); //lowest level  
+
+			Mat down;  
+			cvtColor(_down, down, CV_GRAY2BGR);  
+			maskGaussianPyramid.push_back(down);//add color blend mask into mask Pyramid  
+			currentImg = _down;  
+		}  
+	}  
+	void buildLaplacianPyramid(const Mat& img, vector<Mat_<Vec3f> >& lapPyr, Mat& HighestLevel) {  
+		lapPyr.clear();  
+		Mat currentImg = img;  
+		for (int l=0; l<levels; l++) {  
+			Mat down,up;  
+			pyrDown(currentImg, down);  
+			pyrUp(down, up,currentImg.size());  
+			Mat lap = currentImg - up;  
+			lapPyr.push_back(lap);  
+			currentImg = down;  
+		}  
+		currentImg.copyTo(HighestLevel);  
+	}  
+	Mat_<Vec3f> reconstructImgFromLapPyramid() {  
+		//å°‡å·¦å³laplacianåœ–åƒæ‹¼æˆçš„resultLapPyré‡‘å­—å¡”ä¸­æ¯ä¸€å±¤  
+		//å¾ä¸Šåˆ°ä¸‹æ’å€¼æ”¾å¤§ä¸¦ç›¸åŠ ï¼Œå³å¾—blendåœ–åƒçµæœ  
+		Mat currentImg = resultHighestLevel;  
+		for (int l=levels-1; l>=0; l--) {  
+			Mat up;  
+
+			pyrUp(currentImg, up, resultLapPyr[l].size());  
+			currentImg = up + resultLapPyr[l];  
+		}  
+		return currentImg;  
+	}  
+	void blendLapPyrs() {  
+		//ç²å¾—æ¯å±¤é‡‘å­—å¡”ä¸­ç›´æ¥ç”¨å·¦å³å…©åœ–Laplacianè®Šæ›æ‹¼æˆçš„åœ–åƒresultLapPyr  
+		resultHighestLevel = 
+			leftHighestLevel.mul(maskGaussianPyramid.back()) +  
+			rightHighestLevel.mul(Scalar(1.0,1.0,1.0) - maskGaussianPyramid.back());  
+		for (int l=0; l<levels; l++) {  
+			Mat A = leftLapPyr[l].mul(maskGaussianPyramid[l]);  
+			Mat antiMask = Scalar(1.0,1.0,1.0) - maskGaussianPyramid[l];  
+			Mat B = rightLapPyr[l].mul(antiMask);  
+			Mat_<Vec3f> blendedLevel = A + B;  
+
+			resultLapPyr.push_back(blendedLevel);  
+		}  
+	}  
+
+public:  
+	LaplacianBlending(const Mat_<Vec3f>& _left, const Mat_<Vec3f>& _right, 
+		const Mat_<float>& _blendMask, int _levels)://construct function, used in LaplacianBlending lb(l,r,m,4);  
+		left(_left),right(_right),blendMask(_blendMask),levels(_levels)  
+	{  
+		assert(_left.size() == _right.size());  
+		assert(_left.size() == _blendMask.size());  
+		buildPyramids();  //construct Laplacian Pyramid and Gaussian Pyramid  
+		blendLapPyrs();   //blend left & right Pyramids into one Pyramid  
+	};  
+
+	Mat_<Vec3f> blend() {  
+		return reconstructImgFromLapPyramid();//reconstruct Image from Laplacian Pyramid  
+	}  
+};  
+Mat_<Vec3f> LaplacianBlend(const Mat_<Vec3f>& l, const Mat_<Vec3f>& r, const Mat_<float>& m) {  
+	LaplacianBlending lb(l,r,m,4);
+	Mat_<Vec3f> blend=lb.blend();
+	Mat re; 
+	blend.convertTo(re,CV_8UC3,255);  
+	return re;
+}  
+void mutBlender() {
+	Mat l8u = imread("srcIMG\\LA.bmp");
+	Mat r8u = imread("srcIMG\\LB.bmp");
+	//imshow("left",l8u);   
+	//imshow("right",r8u);
+
+	Mat_<Vec3f> l;
+	l8u.convertTo(l,CV_32F,1.0/255.0);
+	Mat_<Vec3f> r;
+	r8u.convertTo(r,CV_32F,1.0/255.0);
+
+	Mat_<float> m(l.rows,l.cols,0.0);
+	m(Range::all(),Range(0,m.cols/2)) = 1.0;
+
+	Mat blend = LaplacianBlend(l, r, m); 
+	imwrite("LS.bmp", blend);
+
+	waitKey(0); 
+}
+
 //==================================================================================
-
-
-// ¶ê¬W§ë¼v®y¼Ğ¤ÏÂà´«
+// åœ“æŸ±æŠ•å½±åº§æ¨™åè½‰æ›
 inline static  void WarpCylindrical_CoorTranfer_Inve(double R,
 	size_t width, size_t height, 
 	double& x, double& y)
@@ -59,7 +180,7 @@ inline static  void WarpCylindrical_CoorTranfer_Inve(double R,
 	x = (x - width *.5)*k + width *.5;
 	y = (y - height*.5)*k + height*.5;
 }
-// ¶ê¬W§ë¼v basic_ImgData
+// åœ“æŸ±æŠ•å½± basic_ImgData
 void WarpCylindrical(basic_ImgData &dst, const basic_ImgData &src, 
 	double R ,int mx, int my, double edge)
 {
@@ -73,7 +194,7 @@ void WarpCylindrical(basic_ImgData &dst, const basic_ImgData &src,
 	dst.width = w+moveW;
 	dst.height = h * (1+edge*2);
 
-	// ¶ê¬W§ë¼v
+	// åœ“æŸ±æŠ•å½±
 #pragma omp parallel for
 	for (int j = 0; j < h; j++){
 		for (int i = 0; i < w; i++){
@@ -86,10 +207,10 @@ void WarpCylindrical(basic_ImgData &dst, const basic_ImgData &src,
 		}
 	}
 }
-// §ä¨ì¶ê¬W§ë¼v¨¤ÂI
+// æ‰¾åˆ°åœ“æŸ±æŠ•å½±è§’é»
 void WarpCyliCorner(const basic_ImgData &src, vector<int>& corner) {
 	corner.resize(4);
-	// ¥ª¤W¨¤¨¤ÂI
+	// å·¦ä¸Šè§’è§’é»
 	for (int i = 0; i < src.width; i++) {
 		int pix = (int)src.raw_img[(src.height/2*src.width +i)*3 +0];
 		if (i<src.width/2 and pix != 0) {
@@ -102,7 +223,7 @@ void WarpCyliCorner(const basic_ImgData &src, vector<int>& corner) {
 			break;
 		}
 	}
-	// ¥k¤W¨¤¨¤ÂI
+	// å³ä¸Šè§’è§’é»
 	for (int i = 0; i < src.height; i++) {
 		int pix = (int)src.raw_img[(i*src.width +corner[0])*3 +0];
 		if (i<src.height/2 and pix != 0) {
@@ -118,36 +239,38 @@ void WarpCyliCorner(const basic_ImgData &src, vector<int>& corner) {
 }
 
 
-// ¨ú¥X­«Å|°Ï
+
+
+// å–å‡ºé‡ç–Šå€
 void getOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
 	basic_ImgData& cut1, basic_ImgData& cut2, vector<int> corner)
 {
-	// °¾²¾¶q
+	// åç§»é‡
 	int mx=corner[4];
 	int my=corner[5];
-	// ·s¹Ï¤j¤p
+	// æ–°åœ–å¤§å°
 	int newH=corner[3]-corner[1]-my;
 	int newW=corner[2]-corner[0]+mx;
-	// ­«Å|°Ï¤j¤p
+	// é‡ç–Šå€å¤§å°
 	int lapH=newH;
 	int lapW=corner[2]-corner[0]-mx;
-	// ¨â±i¹Ïªº°ª«×°¾®t­È
+	// å…©å¼µåœ–çš„é«˜åº¦åå·®å€¼
 	int myA = my>0? 0:my;
 	int myB = my<0? 0:my;
 
-	// ­«Å|°Ï
+	// é‡ç–Šå€
 	ImgData_resize(cut1, lapW, lapH, 24);
 	ImgData_resize(cut2, lapW, lapH, 24);
 #pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW-mx; i++) {
-			// ¹Ï1
+			// åœ–1
 			if (i < corner[2]-corner[0]-mx) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					cut1.raw_img[(j*cut1.width +i) *3+rgb] = src1.raw_img[(((j+myA)+corner[1])*src1.width +(i+corner[0]+mx)) *3+rgb];
 				}
 			}
-			// ¹Ï2
+			// åœ–2
 			if (i >= mx) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					cut2.raw_img[(j*cut2.width +(i-mx)) *3+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
@@ -158,37 +281,37 @@ void getOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
 	//write_img(cut1, "__cut1.bmp");
 	//write_img(cut2, "__cut2.bmp");
 }
-// ­«Å|°Ï»P¨â±i­ì¹Ï¦X¨Ö
+// é‡ç–Šå€èˆ‡å…©å¼µåŸåœ–åˆä½µ
 void mergeOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
 	const basic_ImgData &blend, basic_ImgData &dst, vector<int> corner)
 {
-	// °¾²¾¶q
+	// åç§»é‡
 	int mx=corner[4];
 	int my=corner[5];
-	// ·s¹Ï¤j¤p
+	// æ–°åœ–å¤§å°
 	int newH=corner[3]-corner[1]-my;
 	int newW=corner[2]-corner[0]+mx;
-	// ¨â±i¹Ïªº°ª«×°¾®t­È
+	// å…©å¼µåœ–çš„é«˜åº¦åå·®å€¼
 	int myA = my>0? 0:my;
 	int myB = my<0? 0:my;
 
-	// ¦X¨Ö¹Ï¤ù
+	// åˆä½µåœ–ç‰‡
 #pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW; i++) {
-			// ¹Ï1
+			// åœ–1
 			if (i < mx) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					dst.raw_img[(j*dst.width +i) *3+rgb] = src1.raw_img[(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3+rgb];
 				}
 			}
-			// ­«Å|°Ï
+			// é‡ç–Šå€
 			else if (i >= mx and i < corner[2]-corner[0]) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					dst.raw_img[(j*dst.width +i) *3+rgb] = blend.raw_img[(j*blend.width+(i-mx)) *3+rgb];
 				}
 			}
-			// ¹Ï2
+			// åœ–2
 			else if (i >= corner[2]-corner[0]) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					dst.raw_img[(j*dst.width +i) *3+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
@@ -197,112 +320,121 @@ void mergeOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
 		}
 	}
 }
-
-// ²V¦X¨â±i¶ê¬W
+// æ··åˆå…©å¼µåœ“æŸ±
 void WarpCyliMuitBlend(basic_ImgData &dst, const 
 	basic_ImgData &src1, const basic_ImgData &src2,
 	int mx, int my) 
 {
-	// ÀË´ú¶ê¬W¹Ï¨¤ÂI(minX, minY, maxX, maxY, mx, my)
+	// æª¢æ¸¬åœ“æŸ±åœ–è§’é»(minX, minY, maxX, maxY, mx, my)
 	vector<int> corner;
 	WarpCyliCorner(src1, corner);
 	corner.push_back(mx);
 	corner.push_back(my);
-
-	// ·s¹Ï¤j¤p
+	// æ–°åœ–å¤§å°
 	int newH=corner[3]-corner[1]-my;
 	int newW=corner[2]-corner[0]+mx;
-	// ¨â±i¹Ïªº°ª«×°¾®t­È
-	int myA = my>0? 0:my;
-	int myB = my<0? 0:my;
-
-	// ¨ú¥X­«Å|°Ï
+	ImgData_resize(dst, newW, newH, 24);
+	// å–å‡ºé‡ç–Šå€
 	basic_ImgData cut1, cut2;
 	getOverlap(src1, src2, cut1, cut2, corner);
-	// ²V¦X­«Å|°Ï
+	// æ··åˆé‡ç–Šå€
 	basic_ImgData blend;
 	blendImg(blend, cut1, cut2);
 	ImgData_write(blend, "___lapblend.bmp");
-
-	// ´ú¸Õ:¥[¤J¬fªQ²V¦X¹Ï
-	basic_ImgData blend2;
-	//Raw2Img::read_bmp(blend2.raw_img, "posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
-	//blend = blend2;
-
-	// ¦X¨Ö¤T±i¹Ï¤ù
+	// åˆä½µä¸‰å¼µåœ–ç‰‡
 	mergeOverlap(src1, src2, blend, dst, corner);
 }
 
 
 
-// ¤Á³Î¶ê¬W§ë¼v
-void cutWarpCyliImg(
+
+// è¼¸å‡ºåœ“æŸ±æŠ•å½±AB
+void cutWarpCyliImgAB(
+	const basic_ImgData &src1, const basic_ImgData &src2, 
+	basic_ImgData &dst, basic_ImgData &dst1, basic_ImgData &dst2, 
+	const vector<int>& corner, int mode=0)
+{
+	// åç§»é‡
+	int mx=corner[4];
+	int my=corner[5];
+	// æ–°åœ–å¤§å°
+	int newH=corner[3]-corner[1]-my;
+	int newW=corner[2]-corner[0]+mx;
+	int img2mx = newW/2.0;
+	// é‡å»ºå¤§å°
+	ImgData_resize(dst, newW, newH, 24);
+	ImgData_resize(dst1, newW-mx, newH, 24);
+	ImgData_resize(dst2, newW-img2mx, newH, 24);
+	// å…©å¼µåœ–çš„é«˜åº¦åå·®å€¼
+	int myA = my>0? 0:my;
+	int myB = my<0? 0:my;
+
+
+#pragma omp parallel for
+	for (int j = 0; j < newH; j++) {
+		for (int i = 0; i < newW; i++) {
+			int src1idx;
+			// åœ–1
+			if (i < corner[2]-corner[0]) {
+				src1idx=(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3;
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					dst1.raw_img[(j*dst1.width +i)*3 +rgb] = src1.raw_img[src1idx+rgb];
+				}
+			}
+			// åœ–2
+			if (i >= img2mx) {
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					dst2.raw_img[(j*dst2.width +(i-img2mx)) *3+rgb] = 
+						src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
+				}
+			}
+		}
+	}
+}
+
+// å»¶ä¼¸åœ“æŸ±æŠ•å½±A
+void cutWarpCyliImgA(
 	const basic_ImgData &src1, const basic_ImgData &src2, 
 	basic_ImgData &dst,
 	const vector<int>& corner)
 {
-	// °¾²¾¶q
+	// åç§»é‡
 	int mx=corner[4];
 	int my=corner[5];
-	// ·s¹Ï¤j¤p
+	// æ–°åœ–å¤§å°
 	int newH=corner[3]-corner[1]-my;
 	int newW=corner[2]-corner[0]+mx;
-	// ¨â±i¹Ïªº°ª«×°¾®t­È
-	int myA = my>0? 0:my;
-	int myB = my<0? 0:my;
-
-
-
-
-}
-// ¬fªQ²V¦X¶ê¬W(´ú¸Õ¤¤)
-void WarpCyliMuitBlend_pos(basic_ImgData &dst, const 
-	basic_ImgData &src1, const basic_ImgData &src2,
-	int mx, int my) 
-{
-	// ÀË´ú¶ê¬W¹Ï¨¤ÂI(minX, minY, maxX, maxY, mx, my)
-	vector<int> corner;
-	WarpCyliCorner(src1, corner);
-	corner.push_back(mx);
-	corner.push_back(my);
-	// ·s¹Ï¤j¤p
-	int newH=corner[3]-corner[1]-my;
-	int newW=corner[2]-corner[0]+mx;
-	// ¨â±i¹Ïªº°ª«×°¾®t­È
-	int myA = my>0? 0:my;
-	int myB = my<0? 0:my;
-
-
-	//--------------------------------------------------
-	// ¾ã±i¹Ï(test¥Î)
 	ImgData_resize(dst, newW, newH, 24);
-	basic_ImgData all=dst;
+	// å…©å¼µåœ–çš„é«˜åº¦åå·®å€¼
+	int myA = my>0? 0:my;
+	int myB = my<0? 0:my;
 
-	// ¹³¥k©µ¦ù¹³¯À
-	basic_ImgData right, right2;
+	// æ•´å¼µåœ–(testç”¨)
+	basic_ImgData& all=dst;
+
+	// åƒå³å»¶ä¼¸åƒç´ 
+	basic_ImgData right, right_gau;
 	ImgData_resize(right, newH, 1, 24);
-
-//#pragma omp parallel for
+	//#pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
+		int src1idx;
 		for (int i = 0; i < newW; i++) {
 			int idx=(j*dst.width +i) *3;
-			int src1idx;
-
-			// ¹Ï1
+			// åœ–1
 			if (i < /*corner[2]-corner[0]*/ newW/2.0) {
 				src1idx=(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3;
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					all.raw_img[idx+rgb] = src1.raw_img[src1idx+rgb];
 				}
 			}
-			// ¦V¥k©Ô¥­
+			// å‘å³æ‹‰å¹³
 			if (i >= /*mx*/ newW/2.0 ) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					//all.raw_img[idx+rgb] = src1.raw_img[src1idx+rgb];
 					right.raw_img[j*3+rgb] = src1.raw_img[src1idx+rgb];
 				}
 			}
-			// ¹Ï2
+			// åœ–2
 			if (i >= /*mx*/ newW/2.0) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					//all.raw_img[idx+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
@@ -310,60 +442,72 @@ void WarpCyliMuitBlend_pos(basic_ImgData &dst, const
 			}
 		}
 	}
-	GauBlur(right, right2, 1.6, 9);
+
+	GauBlur(right, right_gau, 1.6*3, 9);
+	
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW; i++) {
 			int idx=(j*dst.width +i) *3;
 			int src1idx;
-
-			// ¹Ï1
-			if (i < /*corner[2]-corner[0]*/ newW/2.0) {
-				src1idx=(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3;
-				for (int  rgb = 0; rgb < 3; rgb++) {
-					//all.raw_img[idx+rgb] = src1.raw_img[src1idx+rgb];
-				}
-			}
-			// ¦V¥k©Ô¥­
+			// å‘å³æ‹‰å¹³
 			if (i >= /*mx*/ newW/2.0 ) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
-					all.raw_img[idx+rgb] = right2.raw_img[j*3+rgb];
-				}
-			}
-			// ¹Ï2
-			if (i >= /*mx*/ newW/2.0) {
-				for (int  rgb = 0; rgb < 3; rgb++) {
-					//all.raw_img[idx+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
+					all.raw_img[idx+rgb] = right_gau.raw_img[j*3+rgb];
 				}
 			}
 		}
 	}
-	ImgData_write(all, "___all.bmp");
+}
+// æŸæ¾æ··åˆåœ“æŸ±(æ¸¬è©¦ä¸­)
+void WarpCyliMuitBlend_pos(basic_ImgData &dst, const 
+	basic_ImgData &src1, const basic_ImgData &src2,
+	int mx, int my) 
+{
+	// æª¢æ¸¬åœ“æŸ±åœ–è§’é»(minX, minY, maxX, maxY, mx, my)
+	vector<int> corner;
+	WarpCyliCorner(src1, corner);
+	corner.push_back(mx);
+	corner.push_back(my);
+	// æ–°åœ–å¤§å°
+	int newH=corner[3]-corner[1]-my;
+	int newW=corner[2]-corner[0]+mx;
+	ImgData_resize(dst, newW, newH, 24);
+
 	//--------------------------------------------------
+	// æ•´å¼µåœ–(testç”¨)
+	// æ“·å–AB
+	basic_ImgData dst1, dst2;
+	cutWarpCyliImgAB(src1, src2, dst, dst1, dst2, corner);
+	ImgData_write(dst1, "___dst1.bmp");
+	ImgData_write(dst2, "___dst2.bmp");
 
-	// ¨ú¥X­«Å|°Ï
-	basic_ImgData cut1, cut2;
-	getOverlap(src1, src2, cut1, cut2, corner);
-	// ²V¦X­«Å|°Ï
-	basic_ImgData blend;
-	blendImg(blend, cut1, cut2);
-	ImgData_write(blend, "___lapblend.bmp");
+	// å»¶é•·dstp
+	basic_ImgData dst1p;
+	cutWarpCyliImgA(src1, src2, dst1p, corner);
+	ImgData_write(dst1p, "___dst1p.bmp");
 
-	// ´ú¸Õ:¥[¤J¬fªQ²V¦X¹Ï
-	basic_ImgData blend2;
-	//Raw2Img::read_bmp(blend2.raw_img, "posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
-	//blend = blend2;
 
-	// ¦X¨Ö¤T±i¹Ï¤ù
-	mergeOverlap(src1, src2, blend, dst, corner);
+	mutBlender();
+	// æŸæ¾æ··åˆ
+	Mat matsrc = imread("___dst2.bmp");
+	Mat matsrcbg = imread("___dst1p.bmp");
+	Mat src_mask = 255 * Mat::ones(matsrc.rows, matsrc.cols, matsrc.depth());
+	Point mvPosi((matsrcbg.cols*2-matsrc.cols)/2, matsrcbg.rows / 2);
+	// ä¸€èˆ¬æŸæ¾èåˆ
+	Timer t1;
+	Mat normal_clone;
+	seamlessClone(matsrc, matsrcbg, src_mask, mvPosi, normal_clone, NORMAL_CLONE);
+	//imshow("normal_clone", normal_clone);
+	imwrite("WarpCyliMuitBlend_pos.bmp", normal_clone);
 }
 
-// ¶ê¬W§ë¼vÁ_¦X½d¨Ò
+// åœ“æŸ±æŠ•å½±ç¸«åˆç¯„ä¾‹
 void test_WarpCyli_AlphaBlend()
 {
 	double ft = 672.673, Ax=219, Ay=3;
 
 	Timer t1;
-	// Åª¨ú¼v¹³
+	// è®€å–å½±åƒ
 	basic_ImgData img1, dst1;
 	Raw2Img::read_bmp(img1.raw_img, "sc02.bmp", &img1.width, &img1.height, &img1.bits);
 	basic_ImgData img2, dst2;
@@ -388,37 +532,37 @@ void test_WarpCyli_AlphaBlend()
 }
 void test_WarpCyli_MuitBlend()
 {
-	
 	// sc
 	//double ft = 672.673, Ax=219, Ay=3;
 	//string name1 = "sc02.bmp", name2 = "sc03.bmp";
 	// ball
-	string name1 = "ball_01.bmp", name2 = "ball_02.bmp";
+	string name1 = "srcIMG\\ball_01.bmp", name2 = "srcIMG\\ball_02.bmp";
 	double ft = 2252.97, Ax = 539, Ay = 37;
 
 	Timer t1;
-	// Åª¨ú¼v¹³
+	// è®€å–å½±åƒ
 	basic_ImgData img1, dst1;
 	Raw2Img::read_bmp(img1.raw_img, name1, &img1.width, &img1.height, &img1.bits);
 	basic_ImgData img2, dst2;  
 	Raw2Img::read_bmp(img2.raw_img, name2, &img2.width, &img2.height, &img2.bits);
 
-	// §ë¼v¹Ï1
+	// æŠ•å½±åœ–1
 	t1.start();
 	WarpCylindrical(dst1, img1, ft);
 	t1.print(" WarpCylindrical");
 	//Raw2Img::raw2bmp("WarpCyliA.bmp", dst1.raw_img, dst1.width, dst1.height);
 
-	// §ë¼v¹Ï2
+	// æŠ•å½±åœ–2
 	t1.start();
 	WarpCylindrical(dst2, img2, ft);
 	t1.print(" WarpCylindrical");
 	//Raw2Img::raw2bmp("WarpCyliB.bmp", dst2.raw_img, dst2.width, dst2.height);
 
-	// Á_¦X¹Ï¤ù.
+	// ç¸«åˆåœ–ç‰‡.
 	basic_ImgData matchImg;
 	t1.start();
 	WarpCyliMuitBlend_pos(matchImg, dst1, dst2, Ax, Ay);
+	//WarpCyliMuitBlend(matchImg, dst1, dst2, Ax, Ay);
 	t1.print(" WarpCyliMuitBlend");
-	Raw2Img::raw2bmp("WarpCyliMuitBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height);
+	//Raw2Img::raw2bmp("WarpCyliMuitBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height);
 }
