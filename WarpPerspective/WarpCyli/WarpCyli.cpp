@@ -12,26 +12,40 @@ Final: 2018/03/21
 #include <timer.hpp>
 using namespace std;
 
+#include <opencv2\opencv.hpp>
+using namespace cv;
+
 #include "Raw2Img.hpp"
 #include "Sharelib.hpp"
 #include "WarpCyli.hpp"
 #include "Pyramid.hpp"
+#include "GauBlur.hpp"
 
 
 //==================================================================================
 // 私有函式
 //==================================================================================
-// 重設 basic_ImgData 大小
-static void resize_basic_ImgData(basic_ImgData &dst, int newW, int newH, int bits) {
+// 重設 ImgData 大小
+static void ImgData_resize(basic_ImgData &dst, int newW, int newH, int bits) {
 	dst.raw_img.resize(newW*newH*3);
 	dst.width = newW;
 	dst.height = newH;
 	dst.bits = bits;
 };
-// 輸出到 bmp
-static void write_img(basic_ImgData &dst, string name) {
+static void ImgData_resize(const basic_ImgData& src, basic_ImgData &dst) {
+	dst.raw_img.resize(src.width*src.height*3);
+	dst.width = src.width;
+	dst.height = src.height;
+	dst.bits = src.bits;
+};
+// 輸出 bmp
+static void ImgData_write(basic_ImgData &dst, string name) {
 	Raw2Img::raw2bmp(name, dst.raw_img, dst.width, dst.height);
 };
+// 讀取bmp
+static void ImgData_read(basic_ImgData &src, std::string name) {
+	Raw2Img::read_bmp(src.raw_img, name, &src.width, &src.height, &src.bits);
+}
 //==================================================================================
 
 
@@ -104,7 +118,6 @@ void WarpCyliCorner(const basic_ImgData &src, vector<int>& corner) {
 }
 
 
-
 // 取出重疊區
 void getOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
 	basic_ImgData& cut1, basic_ImgData& cut2, vector<int> corner)
@@ -123,8 +136,8 @@ void getOverlap(const basic_ImgData &src1, const basic_ImgData &src2,
 	int myB = my<0? 0:my;
 
 	// 重疊區
-	resize_basic_ImgData(cut1, lapW, lapH, 24);
-	resize_basic_ImgData(cut2, lapW, lapH, 24);
+	ImgData_resize(cut1, lapW, lapH, 24);
+	ImgData_resize(cut2, lapW, lapH, 24);
 #pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW-mx; i++) {
@@ -196,8 +209,41 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 	corner.push_back(mx);
 	corner.push_back(my);
 
+	// 新圖大小
+	int newH=corner[3]-corner[1]-my;
+	int newW=corner[2]-corner[0]+mx;
+	// 兩張圖的高度偏差值
+	int myA = my>0? 0:my;
+	int myB = my<0? 0:my;
+
+	// 取出重疊區
+	basic_ImgData cut1, cut2;
+	getOverlap(src1, src2, cut1, cut2, corner);
+	// 混合重疊區
+	basic_ImgData blend;
+	blendImg(blend, cut1, cut2);
+	ImgData_write(blend, "___lapblend.bmp");
+
+	// 測試:加入柏松混合圖
+	basic_ImgData blend2;
+	//Raw2Img::read_bmp(blend2.raw_img, "posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
+	//blend = blend2;
+
+	// 合併三張圖片
+	mergeOverlap(src1, src2, blend, dst, corner);
+}
 
 
+
+// 切割圓柱投影
+void cutWarpCyliImg(
+	const basic_ImgData &src1, const basic_ImgData &src2, 
+	basic_ImgData &dst,
+	const vector<int>& corner)
+{
+	// 偏移量
+	int mx=corner[4];
+	int my=corner[5];
 	// 新圖大小
 	int newH=corner[3]-corner[1]-my;
 	int newW=corner[2]-corner[0]+mx;
@@ -207,15 +253,40 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 
 
 
+
+}
+// 柏松混合圓柱(測試中)
+void WarpCyliMuitBlend_pos(basic_ImgData &dst, const 
+	basic_ImgData &src1, const basic_ImgData &src2,
+	int mx, int my) 
+{
+	// 檢測圓柱圖角點(minX, minY, maxX, maxY, mx, my)
+	vector<int> corner;
+	WarpCyliCorner(src1, corner);
+	corner.push_back(mx);
+	corner.push_back(my);
+	// 新圖大小
+	int newH=corner[3]-corner[1]-my;
+	int newW=corner[2]-corner[0]+mx;
+	// 兩張圖的高度偏差值
+	int myA = my>0? 0:my;
+	int myB = my<0? 0:my;
+
+
+	//--------------------------------------------------
 	// 整張圖(test用)
-	resize_basic_ImgData(dst, newW, newH, 24);
+	ImgData_resize(dst, newW, newH, 24);
 	basic_ImgData all=dst;
+
+	// 像右延伸像素
+	basic_ImgData right, right2;
+	ImgData_resize(right, newH, 1, 24);
+
 //#pragma omp parallel for
 	for (int j = 0; j < newH; j++) {
 		for (int i = 0; i < newW; i++) {
 			int idx=(j*dst.width +i) *3;
 			int src1idx;
-
 
 			// 圖1
 			if (i < /*corner[2]-corner[0]*/ newW/2.0) {
@@ -228,22 +299,46 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 			if (i >= /*mx*/ newW/2.0 ) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
 					//all.raw_img[idx+rgb] = src1.raw_img[src1idx+rgb];
+					right.raw_img[j*3+rgb] = src1.raw_img[src1idx+rgb];
 				}
 			}
-
-
-
 			// 圖2
 			if (i >= /*mx*/ newW/2.0) {
 				for (int  rgb = 0; rgb < 3; rgb++) {
-					all.raw_img[idx+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
+					//all.raw_img[idx+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
 				}
 			}
 		}
 	}
-	write_img(all, "___all.bmp");
+	GauBlur(right, right2, 1.6, 9);
+	for (int j = 0; j < newH; j++) {
+		for (int i = 0; i < newW; i++) {
+			int idx=(j*dst.width +i) *3;
+			int src1idx;
 
-
+			// 圖1
+			if (i < /*corner[2]-corner[0]*/ newW/2.0) {
+				src1idx=(((j+myA)+corner[1])*src1.width +(i+corner[0])) *3;
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					//all.raw_img[idx+rgb] = src1.raw_img[src1idx+rgb];
+				}
+			}
+			// 向右拉平
+			if (i >= /*mx*/ newW/2.0 ) {
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					all.raw_img[idx+rgb] = right2.raw_img[j*3+rgb];
+				}
+			}
+			// 圖2
+			if (i >= /*mx*/ newW/2.0) {
+				for (int  rgb = 0; rgb < 3; rgb++) {
+					//all.raw_img[idx+rgb] = src2.raw_img[(((j+myB)+corner[1])*src1.width +((i-mx)+corner[0])) *3+rgb];
+				}
+			}
+		}
+	}
+	ImgData_write(all, "___all.bmp");
+	//--------------------------------------------------
 
 	// 取出重疊區
 	basic_ImgData cut1, cut2;
@@ -251,11 +346,11 @@ void WarpCyliMuitBlend(basic_ImgData &dst, const
 	// 混合重疊區
 	basic_ImgData blend;
 	blendImg(blend, cut1, cut2);
-	write_img(blend, "___lapblend.bmp");
+	ImgData_write(blend, "___lapblend.bmp");
 
 	// 測試:加入柏松混合圖
 	basic_ImgData blend2;
-	Raw2Img::read_bmp(blend2.raw_img, "posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
+	//Raw2Img::read_bmp(blend2.raw_img, "posiblend.bmp", &blend2.width, &blend2.height, &blend2.bits);
 	//blend = blend2;
 
 	// 合併三張圖片
@@ -323,7 +418,7 @@ void test_WarpCyli_MuitBlend()
 	// 縫合圖片.
 	basic_ImgData matchImg;
 	t1.start();
-	WarpCyliMuitBlend(matchImg, dst1, dst2, Ax, Ay);
+	WarpCyliMuitBlend_pos(matchImg, dst1, dst2, Ax, Ay);
 	t1.print(" WarpCyliMuitBlend");
 	Raw2Img::raw2bmp("WarpCyliMuitBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height);
 }
