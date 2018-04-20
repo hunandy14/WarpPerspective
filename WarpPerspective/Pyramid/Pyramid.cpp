@@ -24,6 +24,38 @@ using namespace cv;
 #include "Pyramid.hpp"
 
 // 高斯2d矩陣
+// 高斯公式
+static float gau_meth(size_t r, float p) {
+	float two = 2.0;
+	float num = exp(-pow(r, two) / (two*pow(p, two)));
+	num /= sqrt(two*M_PI)*p;
+	return num;
+}
+// 高斯矩陣 (mat_len defa=3)
+static vector<float> gau_matrix(float p, size_t mat_len) {
+	vector<float> gau_mat;
+	// 奇數修正
+	if (mat_len % 2 == 0) { ++mat_len; }
+	// 一維高斯矩陣
+	gau_mat.resize(mat_len);
+	float sum = 0;
+	for (int i = 0, j = mat_len / 2; j < mat_len; ++i, ++j) {
+		float temp;
+		if (i) {
+			temp = gau_meth(i, p);
+			gau_mat[j] = temp;
+			gau_mat[mat_len - j - 1] = temp;
+			sum += temp += temp;
+		}
+		else {
+			gau_mat[j] = gau_meth(i, p);
+			sum += gau_mat[j];
+		}
+	}
+	// 歸一化
+	for (auto&& i : gau_mat) { i /= sum; }
+	return gau_mat;
+}
 static vector<float> gau_matrix2d(float p, size_t mat_len) {
 	vector<float> gau_mat2d;
 	gau_mat2d.resize(mat_len*mat_len);
@@ -158,7 +190,9 @@ static void WarpScale(const basic_ImgData &src, basic_ImgData &dst, double Ratio
 	}
 }
 
-// 金字塔層處理
+//==================================================================================
+// 金字塔處理
+//==================================================================================
 void pyraUp(const basic_ImgData &src, basic_ImgData &dst) {
 	int newH = (int)(src.height * 2.0);
 	int newW = (int)(src.width  * 2.0);
@@ -170,9 +204,9 @@ void pyraUp(const basic_ImgData &src, basic_ImgData &dst) {
 	dst.bits   = src.bits;
 
 	basic_ImgData temp;
-	//WarpScale(src, temp, 2.0);
+	WarpScale(src, temp, 2.0);
 	GauBlur(temp, dst, 1.6, 4);
-	Lowpass(temp, dst);
+	//Lowpass(temp, dst);
 }
 void pyraDown(const basic_ImgData &src, basic_ImgData &dst) {
 	//Timer t1;
@@ -292,11 +326,8 @@ void reLaplacianPyramids(LapPyr &pyr, basic_ImgData &dst, int octvs=5) {
 // 混合拉普拉斯金字塔
 void blendLaplacianPyramids(LapPyr& LS, const LapPyr& LA, const LapPyr& LB) {
 	LS.resize(LA.size());
-	
-	Timer t1;
 	// 高斯矩陣
 	auto gausKernal = getGauKer(LA.back().width);
-
 	// 混合圖片
 	for(int idx = 0; idx < LS.size(); idx++) {
 		int newH =   (int)(LA[idx].height);
@@ -350,7 +381,7 @@ void blendLaplacianPyramids(LapPyr& LS, const LapPyr& LA, const LapPyr& LB) {
 	}
 }
 // 混合圖片
-void blendImg(basic_ImgData& dst, const basic_ImgData& src1, const basic_ImgData& src2) {
+void blendLaplacianImg(basic_ImgData& dst, const basic_ImgData& src1, const basic_ImgData& src2) {
 	Timer t1;
 	t1.priSta=0;
 	// 拉普拉斯金字塔 AB
@@ -372,20 +403,22 @@ void blendImg(basic_ImgData& dst, const basic_ImgData& src1, const basic_ImgData
 	t1.print("  rebuildLaplacianPyramids");
 }
 
+
+
 // 混合圖片
 void test_pyramids() {
 	Timer t1;
 	// 圖片
-	//string name1="white.bmp", name2="apple.bmp";
+	string name1="srcIMG\\white.bmp", name2="srcIMG\\apple.bmp";
 	//string name1="LA.bmp", name2="LB.bmp";
-	string name1="LA2.bmp", name2="LB2'.bmp";
+	//string name1="srcIMG\\LA2.bmp", name2="srcIMG\\LB2'.bmp";
 	// 讀取影像
 	basic_ImgData src1, src2, dst;
 	Raw2Img::read_bmp(src1.raw_img, name1, &src1.width, &src1.height, &src1.bits);
 	Raw2Img::read_bmp(src2.raw_img, name2, &src2.width, &src2.height, &src2.bits);
 	// 混合圖片
 	t1.start();
-	blendImg(dst, src1, src2);
+	blendLaplacianImg(dst, src1, src2);
 	t1.print(" blendImg");
 	// 輸出圖片
 	Raw2Img::raw2bmp("LS.bmp", dst.raw_img, dst.width, dst.height, dst.bits);
