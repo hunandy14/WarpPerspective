@@ -306,9 +306,9 @@ void WarpPers_Stitch(basic_ImgData& matchImg,
 {
 	// 透視投影
 	basic_ImgData warpImg;
-	WarpPerspective(imgR, warpImg, HomogMat, 0);
+	WarpPerspective_cut(imgR, warpImg, HomogMat, 0);
 	// 縫合影像
-	PasteBlend(matchImg, imgL, warpImg);
+	AlphaBlend(matchImg, imgL, warpImg);
 }
 
 //==================================================================================
@@ -350,35 +350,9 @@ void test_WarpPers_Stitch() {
     ImgData_read(img1, "srcImg\\DSC_2940.bmp");
     ImgData_read(img2, "srcImg\\DSC_2941.bmp");
 	
-	// 透視投影
+	// 混合影像
 	basic_ImgData warpImg, matchImg;
-	WarpPerspective_cut(img2, warpImg, HomogMat, 0);
-	ImgData_write(warpImg, "warpImg.bmp");
-	// 縫合影像
-	AlphaBlend(matchImg, img1, warpImg);
-
-	// 輸出影像
-	string outName = "WarpPers_AlphaBlend.bmp";
-	Raw2Img::raw2bmp(outName, matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
-}
-void test_WarpPers_Stitch2(string name1, string name2) {
-	Timer t1;
-	// 透視矩陣
-	const vector<double> HomogMat{
-		0.708484   ,  0.00428145 , 245.901,
-		-0.103356   ,  0.888676   , 31.6815,
-		-0.000390072, -1.61619e-05, 1
-	};
-
-	// 讀取影像
-	basic_ImgData img1, img2;
-	Raw2Img::read_bmp(img1.raw_img, name1, &img1.width, &img1.height, &img1.bits);
-	Raw2Img::read_bmp(img2.raw_img, name2, &img2.width, &img2.height, &img2.bits);
-
-
-	// 縫合影像
-	basic_ImgData matchImg;
-	WarpPers_Stitch(img1, img2, matchImg, HomogMat);
+	WarpPers_Stitch(matchImg, img1, img2, HomogMat);
 
 	// 輸出影像
 	string outName = "WarpPers_AlphaBlend.bmp";
