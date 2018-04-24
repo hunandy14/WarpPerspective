@@ -31,11 +31,11 @@ int main(int argc, char const *argv[]) {
 	//test_WarpScale();
 
 	/* 透視投影實現縫合 */
-	//test_WarpPers_Stitch();
+	test_WarpPers_Stitch();
 
 	/* 圓柱投影實現縫合 */
 	//test_WarpCyli_AlphaBlend();
-	test_WarpCyli_MuitBlend();
+	//test_WarpCyli_MuitBlend();
 
 	/* 高斯模糊 */
 	//test_GauBlur();

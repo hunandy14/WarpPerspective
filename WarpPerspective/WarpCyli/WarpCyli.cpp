@@ -588,13 +588,17 @@ void test_WarpCyli_AlphaBlend()
 }
 void test_WarpCyli_MuitBlend()
 {
+	string name1, name2;
+	double ft, Ax, Ay;
 	// sc
-	double ft = 672.673, Ax=219, Ay=3;
-	string name1 = "srcIMG\\sc02.bmp", name2 = "srcIMG\\sc03.bmp";
+	/*name1 = "srcIMG\\sc02.bmp", name2 = "srcIMG\\sc03.bmp";
+	ft = 672.673, Ax=219, Ay=3;*/
 	// ball
-	//string name1 = "srcIMG\\apple.bmp", name2 = "srcIMG\\orange.bmp";
-	//string name1 = "srcIMG\\ball_01.bmp", name2 = "srcIMG\\ball_02.bmp";
-	//double ft = 2252.97, Ax = 539, Ay = 37;
+	//name1 = "srcIMG\\ball_01.bmp", name2 = "srcIMG\\ball_02.bmp";
+	//ft = 2252.97, Ax = 539, Ay = 37;
+	// DSC_2936
+	name1 = "srcIMG\\DSC_2936.bmp", name2 = "srcIMG\\DSC_2937.bmp";
+	ft = 457.585, Ax=239, Ay=-9;
 
 	Timer t1;
 	// 讀取影像
@@ -618,8 +622,8 @@ void test_WarpCyli_MuitBlend()
 	// 縫合圖片.
 	basic_ImgData matchImg;
 	t1.start();
-	//WarpCyliMuitBlend_pos(matchImg, dst1, dst2, Ax, Ay);
-	WarpCyliMuitBlend(matchImg, dst1, dst2, Ax, Ay);
+	WarpCyliMuitBlend_pos(matchImg, dst1, dst2, Ax, Ay);
+	//WarpCyliMuitBlend(matchImg, dst1, dst2, Ax, Ay);
 	t1.print(" WarpCyliMuitBlend");
 	Raw2Img::raw2bmp("WarpCyliMuitBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height);
 }

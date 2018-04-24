@@ -119,20 +119,14 @@ void WarpPerspective(const basic_ImgData &src, basic_ImgData &dst,
 	dst.height = dstH;
 	dst.bits = src.bits;
 	// 透視投影
-	int j, i;
-	double x, y; 
-	
-#pragma omp parallel for private(i, j, x, y)
-	for (j = -miny; j < dstH-miny; ++j) {
-		for (i = -minx; i < dstW-minx; ++i){
-			x = i, y = j;
+#pragma omp parallel
+	for (int j = -miny; j < dstH-miny; ++j) {
+		for (int i = -minx; i < dstW-minx; ++i){
+			double x = i, y = j;
 			WarpPerspective_CoorTranfer_Inve(H, x, y);
 			if ((x <= (double)srcW-1.0 && x >= 0.0) and
 				(y <= (double)srcH-1.0 && y >= 0.0))
 			{
-				/*dst.raw_img[((j+miny)*dstW + (i+minx))*3 + 0] = atBilinear_rgb(src.raw_img, srcW, y, x, 0);
-				dst.raw_img[((j+miny)*dstW + (i+minx))*3 + 1] = atBilinear_rgb(src.raw_img, srcW, y, x, 1);
-				dst.raw_img[((j+miny)*dstW + (i+minx))*3 + 2] = atBilinear_rgb(src.raw_img, srcW, y, x, 2);*/
 				unsigned char* p = &dst.raw_img[(j*dstW + i) *3];
 				fast_Bilinear_rgb(p, src, y, x);
 			}
@@ -162,21 +156,41 @@ void test_WarpPers_Stitch() {
 	};
 
 	// 讀取影像
-	basic_ImgData img1;
-	Raw2Img::read_bmp(img1.raw_img, "sc02.bmp", &img1.width, &img1.height, &img1.bits);
-	basic_ImgData img2;
-	Raw2Img::read_bmp(img2.raw_img, "sc03.bmp", &img2.width, &img2.height, &img2.bits);
+	basic_ImgData img1, img2;
+	Raw2Img::read_bmp(img1.raw_img, "srcImg\\sc02.bmp", &img1.width, &img1.height, &img1.bits);
+	Raw2Img::read_bmp(img2.raw_img, "srcImg\\sc03.bmp", &img2.width, &img2.height, &img2.bits);
 
 	// 透視投影
-	basic_ImgData warpImg;
-	t1.start();
+	basic_ImgData warpImg, matchImg;
 	WarpPerspective(img2, warpImg, HomogMat, 0);
-	t1.print(" WarpPerspective");
-
 	// 縫合影像
-	t1.start();
-	basic_ImgData matchImg;
 	AlphaBlend(matchImg, img1, warpImg);
-	t1.print(" WarpPers_Stitch");
-	Raw2Img::raw2bmp("WarpPers_AlphaBlend.bmp", matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
+
+	// 輸出影像
+	string outName = "WarpPers_AlphaBlend.bmp";
+	Raw2Img::raw2bmp(outName, matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
+}
+void test_WarpPers_Stitch2(string name1, string name2) {
+	Timer t1;
+	// 透視矩陣
+	const vector<double> HomogMat{
+		0.708484   ,  0.00428145 , 245.901,
+		-0.103356   ,  0.888676   , 31.6815,
+		-0.000390072, -1.61619e-05, 1
+	};
+
+	// 讀取影像
+	basic_ImgData img1, img2;
+	Raw2Img::read_bmp(img1.raw_img, name1, &img1.width, &img1.height, &img1.bits);
+	Raw2Img::read_bmp(img2.raw_img, name2, &img2.width, &img2.height, &img2.bits);
+
+	// 透視投影
+	basic_ImgData warpImg, matchImg;
+	WarpPerspective(img2, warpImg, HomogMat, 0);
+	// 縫合影像
+	AlphaBlend(matchImg, img1, warpImg);
+
+	// 輸出影像
+	string outName = "WarpPers_AlphaBlend.bmp";
+	Raw2Img::raw2bmp(outName, matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
 }

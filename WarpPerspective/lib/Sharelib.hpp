@@ -5,13 +5,17 @@ By   : CharlotteHonG
 Final: 2018/03/21
 *****************************************************************/
 #pragma once
-#include "Raw2Img.hpp"
 
 #define M_PI 3.14159265358979323846
 
 
 
-// 快速 線性插值
+
+
+//==================================================================================
+// 快速插值
+//==================================================================================
+// 快速線性插值
 inline static void fast_Bilinear_rgb(unsigned char* p, 
 	const basic_ImgData& src, double y, double x)
 {
@@ -47,7 +51,6 @@ inline static void fast_Bilinear_rgb(unsigned char* p,
 	*(p+1) = (unsigned char) G;
 	*(p+2) = (unsigned char) B;
 }
-
 // 快速補值
 inline static void fast_NearestNeighbor_rgb(unsigned char* p,
 	const basic_ImgData& src, double y, double x) 
@@ -71,6 +74,11 @@ inline static void fast_NearestNeighbor_rgb(unsigned char* p,
 	*(p+2) = (unsigned char) B;
 }
 
+
+
+//==================================================================================
+// 混合
+//==================================================================================
 // 比例混合
 inline static void AlphaBlend(basic_ImgData& matchImg, 
 	const basic_ImgData& imgL, const basic_ImgData& imgR) {
