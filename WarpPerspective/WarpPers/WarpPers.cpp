@@ -299,6 +299,20 @@ void PasteBlend(basic_ImgData& matchImg,
 	}
 }
 
+// 給原圖與投影矩陣縫合圖片
+void WarpPers_Stitch(basic_ImgData& matchImg, 
+	const basic_ImgData& imgL, const basic_ImgData& imgR, 
+	const vector<double>& HomogMat)
+{
+	// 透視投影
+	basic_ImgData warpImg;
+	WarpPerspective(imgR, warpImg, HomogMat, 0);
+	// 縫合影像
+	PasteBlend(matchImg, imgL, warpImg);
+}
+
+//==================================================================================
+// 測試函式
 //==================================================================================
 // 透視轉換
 void test1(string name, const vector<double>& HomogMat) {
@@ -361,13 +375,16 @@ void test_WarpPers_Stitch2(string name1, string name2) {
 	Raw2Img::read_bmp(img1.raw_img, name1, &img1.width, &img1.height, &img1.bits);
 	Raw2Img::read_bmp(img2.raw_img, name2, &img2.width, &img2.height, &img2.bits);
 
-	// 透視投影
-	basic_ImgData warpImg, matchImg;
-	WarpPerspective(img2, warpImg, HomogMat, 0);
+
 	// 縫合影像
-	PasteBlend(matchImg, img1, warpImg);
+	basic_ImgData matchImg;
+	WarpPers_Stitch(img1, img2, matchImg, HomogMat);
 
 	// 輸出影像
 	string outName = "WarpPers_AlphaBlend.bmp";
 	Raw2Img::raw2bmp(outName, matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
 }
+
+
+
+//==================================================================================
