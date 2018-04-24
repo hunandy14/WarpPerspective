@@ -20,6 +20,7 @@ using namespace cv;
 #include "WarpCyli.hpp"
 #include "Pyramid.hpp"
 #include "GauBlur.hpp"
+#include "WarpPers.hpp"
 
 
 //==================================================================================

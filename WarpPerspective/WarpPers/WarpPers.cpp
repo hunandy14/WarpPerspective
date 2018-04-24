@@ -16,7 +16,36 @@ using namespace std;
 #include "WarpPers.hpp"
 
 
+//==================================================================================
+// 私有函式
+//==================================================================================
+// 重設 ImgData 大小
+static inline void ImgData_resize(basic_ImgData &dst, int newW, int newH, int bits) {
+	dst.raw_img.resize(newW*newH*3);
+	dst.width = newW;
+	dst.height = newH;
+	dst.bits = bits;
+};
+static inline void ImgData_resize(const basic_ImgData& src, basic_ImgData &dst) {
+	dst.raw_img.resize(src.width*src.height*3);
+	dst.width = src.width;
+	dst.height = src.height;
+	dst.bits = src.bits;
+};
+// 輸出 bmp
+static inline void ImgData_write(basic_ImgData &dst, string name) {
+	Raw2Img::raw2bmp(name, dst.raw_img, dst.width, dst.height);
+};
+// 讀取bmp
+static inline void ImgData_read(basic_ImgData &src, std::string name) {
+	Raw2Img::read_bmp(src.raw_img, name, &src.width, &src.height, &src.bits);
+}
 
+
+
+//==================================================================================
+// 仿射轉換
+//==================================================================================
 // 輸入 dst 座標, 反轉 scr 輸出.
 static void WarpPerspective_CoorTranfer_Inve(const vector<double>& HomogMat, double& x, double& y) {
 	const double* H = HomogMat.data();
@@ -133,7 +162,145 @@ void WarpPerspective(const basic_ImgData &src, basic_ImgData &dst,
 		}
 	}
 }
+void WarpPerspective_cut(const basic_ImgData &src, basic_ImgData &dst, 
+	const vector<double> &H, bool clip=0)
+{
+	int srcW = src.width;
+	int srcH = src.height;
+	// 獲得轉換後最大邊點
+	vector<double> cn = WarpPerspective_Corner(H, srcW, srcH);
+	// 起點位置
+	int miny=0, minx=0;
+	if(clip==1) { miny = (int)-cn[3], minx = (int)-cn[2]; }
+	// 終點位置
+	int dstW = cn[0]+cn[2]+minx;
+	int dstH = srcH;
+	// 初始化 dst
+	ImgData_resize(dst, dstW, dstH, src.bits);
+	// 透視投影
+#pragma omp parallel
+	for (int j = -miny; j < dstH-miny; ++j) {
+		for (int i = -minx; i < dstW-minx; ++i){
+			double x = i, y = j;
+			WarpPerspective_CoorTranfer_Inve(H, x, y);
+			if ((x <= (double)srcW-1.0 && x >= 0.0) and
+				(y <= (double)srcH-1.0 && y >= 0.0))
+			{
+				unsigned char* p = &dst.raw_img[(j*dstW + i) *3];
+				fast_Bilinear_rgb(p, src, y, x);
+			}
+		}
+	}
+}
 
+
+
+//==================================================================================
+// 混合
+//==================================================================================
+// 比例混合
+void AlphaBlend(basic_ImgData& matchImg, 
+	const basic_ImgData& imgL, const basic_ImgData& imgR) {
+	// R 圖先補上去
+	matchImg=imgR;
+	// 比例混合
+	int i, j, start, end;
+#pragma omp parallel for private(i, j, start, end)
+	for(j = 0; j < (int)imgL.height; j++) {
+		start = imgL.width;
+		end = imgL.width;
+		for(i = 0; i <= (int)(imgL.width-1); i++) {
+			if( (imgR.raw_img[j*imgR.width*3 + i*3+0] == 0 and 
+				imgR.raw_img[j*imgR.width*3 + i*3+1] == 0 and
+				imgR.raw_img[j*imgR.width*3 + i*3+2] == 0)
+				)
+			{
+				// 這裡要補原圖 L 的.
+				matchImg.raw_img[j*matchImg.width*3 + i*3+0] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+0];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+1] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+1];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+2] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+2];
+			} else {
+				if(imgL.raw_img[j*imgL.width*3 + i*3+0] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+1] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+2] != 0)
+				{
+					// 這裡是重疊處.
+					if(start==end) {
+						start=i; // 紀錄起頭
+					}
+					if(start<end) {
+						float len = end-start;
+						float ratioR = (i-start)/len;
+						float ratioL = 1.0 - ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+0] = (unsigned char)//100;
+							(imgL.raw_img[j*imgL.width*3 + i*3+0]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+0]*ratioR);
+						matchImg.raw_img[j*matchImg.width*3 + i*3+1] = (unsigned char)//0;
+							(imgL.raw_img[j*imgL.width*3 + i*3+1]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+1]*ratioR);
+						matchImg.raw_img[j*matchImg.width*3 + i*3+2] = (unsigned char)//0;
+							(imgL.raw_img[j*imgL.width*3 + i*3+2]*ratioL + 
+							imgR.raw_img[j*imgR.width*3 + i*3+2]*ratioR);
+					}
+				}
+			}
+		}
+	}
+}
+void PasteBlend(basic_ImgData& matchImg, 
+	const basic_ImgData& imgL, const basic_ImgData& imgR) {
+	// R 圖先補上去
+	matchImg=imgR;
+	// 比例混合
+	int i, j, start, end;
+#pragma omp parallel for private(i, j, start, end)
+	for(j = 0; j < (int)imgL.height; j++) {
+		start = imgL.width;
+		end = imgL.width;
+		for(i = 0; i <= (int)(imgL.width-1); i++) {
+			if( (imgR.raw_img[j*imgR.width*3 + i*3+0] == 0 and 
+				imgR.raw_img[j*imgR.width*3 + i*3+1] == 0 and
+				imgR.raw_img[j*imgR.width*3 + i*3+2] == 0)
+				)
+			{
+				// 這裡要補原圖 L 的.
+				matchImg.raw_img[j*matchImg.width*3 + i*3+0] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+0];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+1] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+1];
+				matchImg.raw_img[j*matchImg.width*3 + i*3+2] = 
+					imgL.raw_img[j*imgL.width*3 + i*3+2];
+			} else {
+				if(imgL.raw_img[j*imgL.width*3 + i*3+0] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+1] != 0 or
+					imgL.raw_img[j*imgL.width*3 + i*3+2] != 0)
+				{
+					// 這裡是重疊處.
+					if(start==end) {
+						start=i; // 紀錄起頭
+					}
+					if(start<end) {
+						float len = end-start;
+						float ratioR = (i-start)/len;
+						float ratioL = 1.0 - ratioR;
+						matchImg.raw_img[j*matchImg.width*3 + i*3+0] =
+							imgL.raw_img[j*imgL.width*3 + i*3+0];
+						matchImg.raw_img[j*matchImg.width*3 + i*3+1] =
+							imgL.raw_img[j*imgL.width*3 + i*3+1];
+						matchImg.raw_img[j*matchImg.width*3 + i*3+2] =
+							imgL.raw_img[j*imgL.width*3 + i*3+2];
+					}
+				}
+			}
+		}
+	}
+}
+
+//==================================================================================
+// 透視轉換
 void test1(string name, const vector<double>& HomogMat) {
 	Timer t1;
 
@@ -145,24 +312,34 @@ void test1(string name, const vector<double>& HomogMat) {
 
 	Raw2Img::raw2bmp("WarpPers1.bmp", img2.raw_img, img2.width, img2.height, img2.bits);
 }
+
 // 透視轉換縫合範例
 void test_WarpPers_Stitch() {
 	Timer t1;
-	// 透視矩陣
-	const vector<double> HomogMat{
-		0.708484   ,  0.00428145 , 245.901,
-		-0.103356   ,  0.888676   , 31.6815,
-		-0.000390072, -1.61619e-05, 1
-	};
-
-	// 讀取影像
 	basic_ImgData img1, img2;
-	Raw2Img::read_bmp(img1.raw_img, "srcImg\\sc02.bmp", &img1.width, &img1.height, &img1.bits);
-	Raw2Img::read_bmp(img2.raw_img, "srcImg\\sc03.bmp", &img2.width, &img2.height, &img2.bits);
 
+	 // 測資1
+    /*const vector<double> HomogMat{
+        0.708484   ,  0.00428145 , 245.901,
+        -0.103356   ,  0.888676   , 31.6815,
+        -0.000390072, -1.61619e-05, 1
+    };
+    ImgData_read(img1, "srcImg\\sc02.bmp");
+    ImgData_read(img2, "srcImg\\sc03.bmp");*/
+
+    // 測資2
+    const vector<double> HomogMat{
+		0.689226, -0.0855788, 285.784,
+		-0.088683, 0.850725, 42.3368,
+		-0.00043415, -0.000150003, 1,
+    };
+    ImgData_read(img1, "srcImg\\DSC_2940.bmp");
+    ImgData_read(img2, "srcImg\\DSC_2941.bmp");
+	
 	// 透視投影
 	basic_ImgData warpImg, matchImg;
-	WarpPerspective(img2, warpImg, HomogMat, 0);
+	WarpPerspective_cut(img2, warpImg, HomogMat, 0);
+	ImgData_write(warpImg, "warpImg.bmp");
 	// 縫合影像
 	AlphaBlend(matchImg, img1, warpImg);
 
@@ -188,7 +365,7 @@ void test_WarpPers_Stitch2(string name1, string name2) {
 	basic_ImgData warpImg, matchImg;
 	WarpPerspective(img2, warpImg, HomogMat, 0);
 	// 縫合影像
-	AlphaBlend(matchImg, img1, warpImg);
+	PasteBlend(matchImg, img1, warpImg);
 
 	// 輸出影像
 	string outName = "WarpPers_AlphaBlend.bmp";

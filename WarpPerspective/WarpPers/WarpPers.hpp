@@ -10,6 +10,10 @@ using std::vector;
 using std::string;
 
 void WarpPerspective(const basic_ImgData & src, basic_ImgData & dst, const vector<double>& H, bool clip);
+void WarpPerspective_cut(const basic_ImgData & src, basic_ImgData & dst, const vector<double>& H, bool clip);
+void AlphaBlend(basic_ImgData & matchImg, const basic_ImgData & imgL, const basic_ImgData & imgR);
+void PasteBlend(basic_ImgData & matchImg, const basic_ImgData & imgL, const basic_ImgData & imgR);
+
 void test1(string name, const vector<double>& HomogMat);
 void test_WarpPers_Stitch();
 void test_WarpPers_Stitch2(string name1, string name2);
