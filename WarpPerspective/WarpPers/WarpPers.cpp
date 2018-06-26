@@ -341,19 +341,54 @@ void test_WarpPers_Stitch() {
     ImgData_read(img1, "srcImg\\sc02.bmp");
     ImgData_read(img2, "srcImg\\sc03.bmp");*/
 
+	// 測資4
+	/*const vector<double> HomogMat{
+		0.7348744865670485, 0.0108833042626221, 243.6991395469133,
+		-0.08927309477781344, 0.9070001281140213, 26.59162261058603,
+		-0.0003535551339269338, -2.68855175895038e-06, 1
+	};
+	ImgData_read(img1, "srcImg\\sc02.bmp");
+	ImgData_read(img2, "srcImg\\sc03.bmp");*/
+
+
     // 測資2
-    const vector<double> HomogMat{
+    /*const vector<double> HomogMat{
 		0.689226, -0.0855788, 285.784,
 		-0.088683, 0.850725, 42.3368,
 		-0.00043415, -0.000150003, 1,
     };
     ImgData_read(img1, "srcImg\\DSC_2940.bmp");
-    ImgData_read(img2, "srcImg\\DSC_2941.bmp");
+    ImgData_read(img2, "srcImg\\DSC_2941.bmp");*/
 	
+	// 測資3
+	/*const vector<double> HomogMat{
+		0.9015176297750432, -0.07853590983276278, 590.1138974282143,
+	0.01868191170472197, 0.8896358331521255, -6.256648356599711,
+	-3.308436741865926e-05, -6.164729033096104e-05, 1
+	};
+	ImgData_read(img1, "srcImg\\ball_01.bmp");
+	ImgData_read(img2, "srcImg\\ball_02.bmp");	*/
+	// 測資5
+	/*const vector<double> HomogMat{
+		0.9015176297750432, -0.07853590983276278, 590.1138974282143,
+	0.01868191170472197, 0.8896358331521255, -6.256648356599711,
+	-3.308436741865926e-05, -6.164729033096104e-05, 1
+	};
+	ImgData_read(img1, "srcImg\\ball_01.bmp");
+	ImgData_read(img2, "srcImg\\ball_02.bmp");*/
+
+	
+	basic_ImgData warpImg2;
+	//WarpPerspective(img2);
+	WarpPerspective_cut(img2, warpImg2, HomogMat, 0);
+	Raw2Img::raw2bmp("__WarpPers.bmp", warpImg2.raw_img, warpImg2.width, warpImg2.height, warpImg2.bits);
+
+
+
+
 	// 混合影像
 	basic_ImgData warpImg, matchImg;
 	WarpPers_Stitch(matchImg, img1, img2, HomogMat);
-
 	// 輸出影像
 	string outName = "WarpPers_AlphaBlend.bmp";
 	Raw2Img::raw2bmp(outName, matchImg.raw_img, matchImg.width, matchImg.height, matchImg.bits);
